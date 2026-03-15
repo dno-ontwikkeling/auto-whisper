@@ -1,0 +1,23 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.vs/
+.vs/
+
+## Models (large binary files)
+*.bin
+
+## IDE
+.idea/
+*.DotSettings
+
+## Build output
+publish/
+installer-output/
+
+## OS
+Thumbs.db
+Desktop.ini
+.DS_Store

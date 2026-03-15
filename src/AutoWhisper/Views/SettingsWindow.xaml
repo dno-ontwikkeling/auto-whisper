@@ -1,0 +1,164 @@
+<ui:FluentWindow x:Class="AutoWhisper.Views.SettingsWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 Title="AutoWhisper Settings"
+                 Width="840" Height="580"
+                 WindowStartupLocation="CenterScreen"
+                 ResizeMode="NoResize"
+                 ExtendsContentIntoTitleBar="True">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Title bar -->
+        <ui:TitleBar Grid.Row="0" Title="AutoWhisper Settings" />
+
+        <!-- Content -->
+        <ScrollViewer Grid.Row="1" Padding="24,8,24,0">
+            <StackPanel>
+
+                <!-- General Section -->
+                <TextBlock Text="General" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" />
+
+                <Border Background="#10FFFFFF" CornerRadius="8" Padding="16" Margin="0,0,0,8">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Left">
+                            <TextBlock Text="Hotkey" FontWeight="SemiBold" />
+                            <TextBlock Text="Hold to record, release to transcribe" Opacity="0.6" FontSize="12" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <Border x:Name="HotkeyBorder"
+                                    Background="#18FFFFFF" CornerRadius="4"
+                                    Padding="10,4" Margin="0,0,8,0">
+                                <TextBlock x:Name="HotkeyDisplay"
+                                           Text="Ctrl + Shift + Space"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                            <ui:Button x:Name="ChangeHotkeyButton"
+                                       Content="Change"
+                                       Click="ChangeHotkey_Click"
+                                       Appearance="Secondary" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <Border Background="#10FFFFFF" CornerRadius="8" Padding="16" Margin="0,0,0,8">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Left">
+                            <TextBlock Text="Launch at startup" FontWeight="SemiBold" />
+                            <TextBlock Text="Start AutoWhisper when Windows starts" Opacity="0.6" FontSize="12" />
+                        </StackPanel>
+                        <CheckBox x:Name="StartupToggle"
+                                  VerticalAlignment="Center"
+                                  HorizontalAlignment="Right"
+                                  Checked="StartupToggle_Changed"
+                                  Unchecked="StartupToggle_Changed" />
+                    </DockPanel>
+                </Border>
+
+                <!-- Model Section -->
+                <TextBlock Text="Whisper Model" FontSize="16" FontWeight="SemiBold" Margin="0,16,0,12" />
+
+                <Border Background="#10FFFFFF" CornerRadius="8" Padding="16" Margin="0,0,0,8">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Left">
+                            <TextBlock Text="Model" FontWeight="SemiBold" />
+                            <TextBlock Text="Larger models are more accurate but slower" Opacity="0.6" FontSize="12" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <ComboBox x:Name="ModelCombo"
+                                      Width="250"
+                                      SelectionChanged="ModelCombo_Changed" />
+                            <ui:Button x:Name="DownloadModelButton"
+                                       Content="Download"
+                                       Click="DownloadModel_Click"
+                                       Appearance="Primary"
+                                       Margin="8,0,0,0" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <Border x:Name="DownloadProgressBorder" Background="#10FFFFFF" CornerRadius="8" Padding="16" Margin="0,0,0,8" Visibility="Collapsed">
+                    <DockPanel>
+                        <TextBlock x:Name="DownloadProgressText" Text="Downloading..." VerticalAlignment="Center" DockPanel.Dock="Left" />
+                        <ProgressBar x:Name="DownloadProgressBar" Width="200" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                     Minimum="0" Maximum="100" />
+                    </DockPanel>
+                </Border>
+
+                <Border Background="#10FFFFFF" CornerRadius="8" Padding="16" Margin="0,0,0,8">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Left">
+                            <TextBlock Text="Custom model file" FontWeight="SemiBold" />
+                            <TextBlock x:Name="ModelPathText" Text="Not configured" Opacity="0.6" FontSize="12"
+                                       MaxWidth="280" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <ui:Button Content="Browse"
+                                   Click="BrowseModel_Click"
+                                   Appearance="Secondary"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Right" />
+                    </DockPanel>
+                </Border>
+
+                <Border Background="#10FFFFFF" CornerRadius="8" Padding="16" Margin="0,0,0,8">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Left">
+                            <TextBlock Text="Language" FontWeight="SemiBold" />
+                            <TextBlock Text="Multilingual models required for non-English" Opacity="0.6" FontSize="12" />
+                        </StackPanel>
+                        <ComboBox x:Name="LanguageCombo"
+                                  Width="180"
+                                  HorizontalAlignment="Right"
+                                  VerticalAlignment="Center"
+                                  SelectionChanged="LanguageCombo_Changed" />
+                    </DockPanel>
+                </Border>
+
+                <Border Background="#10FFFFFF" CornerRadius="8" Padding="16" Margin="0,0,0,8">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Left">
+                            <TextBlock Text="GPU Runtime" FontWeight="SemiBold" />
+                            <TextBlock Text="Detected acceleration" Opacity="0.6" FontSize="12" />
+                        </StackPanel>
+                        <TextBlock x:Name="RuntimeDisplay"
+                                   Text="Detecting..."
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Right" />
+                    </DockPanel>
+                </Border>
+
+                <!-- Audio Section -->
+                <TextBlock Text="Audio" FontSize="16" FontWeight="SemiBold" Margin="0,16,0,12" />
+
+                <Border Background="#10FFFFFF" CornerRadius="8" Padding="16" Margin="0,0,0,8">
+                    <DockPanel>
+                        <TextBlock Text="Microphone" FontWeight="SemiBold"
+                                   DockPanel.Dock="Left" VerticalAlignment="Center" />
+                        <ComboBox x:Name="MicrophoneCombo"
+                                  Width="220"
+                                  HorizontalAlignment="Right"
+                                  SelectionChanged="MicrophoneCombo_Changed" />
+                    </DockPanel>
+                </Border>
+
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Footer -->
+        <Border Grid.Row="2" Padding="24,12"
+                BorderBrush="#20FFFFFF" BorderThickness="0,1,0,0">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <ui:Button Content="Close" Click="Close_Click" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</ui:FluentWindow>
