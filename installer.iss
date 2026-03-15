@@ -97,6 +97,14 @@ begin
     18: Result := 'da';
     19: Result := 'no';
     20: Result := 'fi';
+    21: Result := 'cs';
+    22: Result := 'ro';
+    23: Result := 'hu';
+    24: Result := 'el';
+    25: Result := 'he';
+    26: Result := 'th';
+    27: Result := 'vi';
+    28: Result := 'id';
   end;
 end;
 
@@ -140,7 +148,6 @@ begin
   SettingsJson := '{' + #13#10;
   SettingsJson := SettingsJson + '  "HotkeyKey": "VcSpace",' + #13#10;
   SettingsJson := SettingsJson + '  "HotkeyModifiers": "LeftCtrl, LeftShift",' + #13#10;
-  SettingsJson := SettingsJson + '  "ModelPath": "",' + #13#10;
   SettingsJson := SettingsJson + '  "SelectedModel": "' + GetModelName(ModelIndex) + '",' + #13#10;
   SettingsJson := SettingsJson + '  "Language": "' + GetLanguageCode(LangIndex) + '",' + #13#10;
   SettingsJson := SettingsJson + '  "LaunchAtStartup": false,' + #13#10;
@@ -160,7 +167,7 @@ begin
     'Select Whisper Model',
     'Choose the speech recognition model to download.',
     'Larger models are more accurate but slower and use more disk space.'#13#10 +
-    'All models support 99 languages including English, Dutch, French, German, and more.',
+    'All models support 28 languages including English, Dutch, French, German, and more.',
     True, False);
   ModelPage.Add('Tiny (39 MB) - Fastest, least accurate');
   ModelPage.Add('Base (142 MB) - Fast, good accuracy');
@@ -210,6 +217,14 @@ begin
   LanguageCombo.Items.Add('Danish');
   LanguageCombo.Items.Add('Norwegian');
   LanguageCombo.Items.Add('Finnish');
+  LanguageCombo.Items.Add('Czech');
+  LanguageCombo.Items.Add('Romanian');
+  LanguageCombo.Items.Add('Hungarian');
+  LanguageCombo.Items.Add('Greek');
+  LanguageCombo.Items.Add('Hebrew');
+  LanguageCombo.Items.Add('Thai');
+  LanguageCombo.Items.Add('Vietnamese');
+  LanguageCombo.Items.Add('Indonesian');
   LanguageCombo.ItemIndex := 0;
 
   // Download progress page
