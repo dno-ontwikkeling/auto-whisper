@@ -54,6 +54,8 @@ begin
     2: Result := 'ggml-small.bin';
     3: Result := 'ggml-medium.bin';
     4: Result := 'ggml-large-v3.bin';
+  else
+    RaiseException('Invalid model index: ' + IntToStr(Index));
   end;
 end;
 
@@ -65,6 +67,8 @@ begin
     2: Result := 'small';
     3: Result := 'medium';
     4: Result := 'large-v3';
+  else
+    RaiseException('Invalid model index: ' + IntToStr(Index));
   end;
 end;
 
@@ -105,6 +109,8 @@ begin
     26: Result := 'th';
     27: Result := 'vi';
     28: Result := 'id';
+  else
+    Result := 'auto';
   end;
 end;
 
@@ -129,7 +135,22 @@ begin
   try
     DownloadPage.SetText('Downloading ' + GetModelFileName(ModelIndex) + '...', '');
     DownloadTemporaryFile(GetModelUrl(ModelIndex), GetModelFileName(ModelIndex), '', @OnDownloadProgress);
-    CopyFile(TempFile, DestFile, False);
+
+    if not FileExists(TempFile) then
+    begin
+      MsgBox('Download failed: temporary file not found.' + #13#10 +
+             'Please check your internet connection and re-run setup.', mbError, MB_OK);
+      Abort;
+    end;
+
+    if not CopyFile(TempFile, DestFile, False) then
+    begin
+      MsgBox('Failed to copy model to: ' + DestFile + #13#10 +
+             'Ensure you have sufficient disk space and write permissions.', mbError, MB_OK);
+      DeleteFile(TempFile);
+      Abort;
+    end;
+
     DeleteFile(TempFile);
   finally
     DownloadPage.Hide;
@@ -138,24 +159,32 @@ end;
 
 procedure WriteSettings(ModelIndex, LangIndex: Integer);
 var
-  SettingsDir: String;
   SettingsFile: String;
   SettingsJson: String;
+  LaunchAtStartup: String;
 begin
-  SettingsDir := ExpandConstant('{app}');
-  SettingsFile := SettingsDir + '\settings.json';
+  SettingsFile := ExpandConstant('{app}\settings.json');
+
+  if FileExists(SettingsFile) then
+    Exit;
+
+  if WizardIsTaskSelected('startupicon') then
+    LaunchAtStartup := 'true'
+  else
+    LaunchAtStartup := 'false';
 
   SettingsJson := '{' + #13#10;
   SettingsJson := SettingsJson + '  "HotkeyKey": "VcSpace",' + #13#10;
   SettingsJson := SettingsJson + '  "HotkeyModifiers": "LeftCtrl, LeftShift",' + #13#10;
   SettingsJson := SettingsJson + '  "SelectedModel": "' + GetModelName(ModelIndex) + '",' + #13#10;
   SettingsJson := SettingsJson + '  "Language": "' + GetLanguageCode(LangIndex) + '",' + #13#10;
-  SettingsJson := SettingsJson + '  "LaunchAtStartup": false,' + #13#10;
-  SettingsJson := SettingsJson + '  "SelectedMicrophone": "",' + #13#10;
-  SettingsJson := SettingsJson + '  "IsFirstRun": false' + #13#10;
+  SettingsJson := SettingsJson + '  "LaunchAtStartup": ' + LaunchAtStartup + ',' + #13#10;
+  SettingsJson := SettingsJson + '  "SelectedMicrophone": ""' + #13#10;
   SettingsJson := SettingsJson + '}';
 
-  SaveStringToFile(SettingsFile, SettingsJson, False);
+  if not SaveStringToFile(SettingsFile, SettingsJson, False) then
+    MsgBox('Failed to write settings file: ' + SettingsFile + #13#10 +
+           'AutoWhisper will use default settings on first launch.', mbError, MB_OK);
 end;
 
 procedure InitializeWizard;
@@ -239,7 +268,12 @@ begin
   if CurStep = ssPostInstall then
   begin
     ModelDir := ExpandConstant('{app}\Models');
-    ForceDirectories(ModelDir);
+    if not ForceDirectories(ModelDir) then
+    begin
+      MsgBox('Failed to create model directory: ' + ModelDir + #13#10 +
+             'Check that the installation path is writable.', mbError, MB_OK);
+      Abort;
+    end;
 
     DownloadModelToDir(ModelPage.SelectedValueIndex, ModelDir);
     WriteSettings(ModelPage.SelectedValueIndex, LanguageCombo.ItemIndex);

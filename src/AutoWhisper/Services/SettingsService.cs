@@ -14,14 +14,11 @@ public class AppSettings
     public string Language { get; set; } = "auto";
     public bool LaunchAtStartup { get; set; } = false;
     public string SelectedMicrophone { get; set; } = "";
-    public bool IsFirstRun { get; set; } = true;
 }
 
 public class SettingsService
 {
-    private static readonly string AppFolder = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "AutoWhisper");
+    private static readonly string AppFolder = AppDomain.CurrentDomain.BaseDirectory;
 
     private static readonly string SettingsFilePath = Path.Combine(AppFolder, "settings.json");
 
@@ -119,8 +116,6 @@ public class SettingsService
     {
         try
         {
-            Directory.CreateDirectory(AppFolder);
-
             if (!File.Exists(SettingsFilePath))
             {
                 Settings = new AppSettings();
@@ -149,7 +144,6 @@ public class SettingsService
     {
         try
         {
-            Directory.CreateDirectory(AppFolder);
             var json = JsonSerializer.Serialize(Settings, JsonOptions);
             File.WriteAllText(SettingsFilePath, json);
         }
