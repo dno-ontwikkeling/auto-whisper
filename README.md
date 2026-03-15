@@ -75,6 +75,7 @@ src/AutoWhisper/
 │   ├── TextInjectionService.cs         # Clipboard-based paste
 │   ├── SettingsService.cs              # JSON config persistence
 │   ├── RuntimeDetectionService.cs      # GPU detection
+│   ├── HotkeyDisplayHelper.cs         # Hotkey formatting for display
 │   └── Logger.cs                       # File logging
 ├── State/
 │   └── DictationStateMachine.cs        # Idle → Recording → Transcribing → Pasting
@@ -85,4 +86,4 @@ src/AutoWhisper/
 
 ## Configuration
 
-Settings are stored in `%APPDATA%\AutoWhisper\settings.json`. Logs are written to `%APPDATA%\AutoWhisper\autowhisper.log`.
+Settings are stored in `settings.json` next to the executable. Logs are written to `%APPDATA%\AutoWhisper\autowhisper.log`.
