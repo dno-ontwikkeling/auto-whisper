@@ -20,7 +20,7 @@ All processing happens locally using OpenAI's Whisper model. No cloud services, 
 
 - Windows 10 or 11
 - .NET 10 SDK
-- Optional: NVIDIA CUDA 12+ or Vulkan SDK for GPU acceleration
+- Optional: [CUDA Toolkit 12+](https://developer.nvidia.com/cuda-downloads) for NVIDIA GPU acceleration, or Vulkan SDK for AMD/Intel GPU acceleration
 
 ### Build and Run
 

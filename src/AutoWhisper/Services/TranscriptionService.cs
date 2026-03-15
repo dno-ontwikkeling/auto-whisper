@@ -27,6 +27,11 @@ public class TranscriptionService
                 _processor?.Dispose();
                 _factory?.Dispose();
 
+                var runtime = RuntimeDetectionService.DetectBestRuntime();
+                Logger.Log($"GPU runtime detected: {RuntimeDetectionService.GetRuntimeDisplayName(runtime)}");
+                Logger.Log($"Selected model (settings): {_settings.Settings.SelectedModel}");
+                Logger.Log($"Custom model path (settings): {(string.IsNullOrEmpty(_settings.Settings.ModelPath) ? "(none)" : _settings.Settings.ModelPath)}");
+
                 var modelPath = _settings.ResolveModelPath();
                 if (string.IsNullOrEmpty(modelPath))
                 {
@@ -35,6 +40,7 @@ public class TranscriptionService
                     return;
                 }
 
+                Logger.Log($"Resolved model path: {modelPath}");
                 _factory = WhisperFactory.FromPath(modelPath);
                 var builder = _factory.CreateBuilder();
 
@@ -48,11 +54,13 @@ public class TranscriptionService
 
                 _isInitialized = true;
                 LoadError = null;
+                Logger.Log($"Whisper model loaded successfully: {Path.GetFileName(modelPath)} (runtime: {RuntimeDetectionService.GetRuntimeDisplayName(runtime)})");
             }
             catch (Exception ex)
             {
                 LoadError = $"Failed to load Whisper model: {ex.Message}";
                 _isInitialized = false;
+                Logger.Log($"Whisper model load failed: {ex.Message}");
             }
         });
     }

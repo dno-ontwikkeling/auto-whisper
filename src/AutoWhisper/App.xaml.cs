@@ -60,6 +60,7 @@ public partial class App : Application
                 _settingsService.Settings.HotkeyKey);
 
             await _hotkeyService.StartAsync();
+            Logger.Log($"Hotkey configured: {hotkeyDisplay}");
             Console.Error.WriteLine($"[AutoWhisper] Hotkey service started. Hold {hotkeyDisplay} to record.");
 
             await _transcriptionService.InitializeAsync();
@@ -176,6 +177,7 @@ public partial class App : Application
             var display = HotkeyDisplayHelper.FormatHotkey(
                 _settingsService.Settings.HotkeyModifiers,
                 _settingsService.Settings.HotkeyKey);
+            Logger.Log($"Hotkey changed to: {display}");
             Console.Error.WriteLine($"[AutoWhisper] Hotkey changed to: {display}");
 
             var settings = _settingsService.Settings;
