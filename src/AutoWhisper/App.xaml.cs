@@ -173,7 +173,6 @@ public partial class App : Application
 
         var previousModel = _settingsService!.Settings.SelectedModel;
         var previousLanguage = _settingsService.Settings.Language;
-        var previousModelPath = _settingsService.Settings.ModelPath;
 
         _settingsWindow = new SettingsWindow(_settingsService, _hotkeyService!);
         _settingsWindow.SettingsSaved += async () =>
@@ -186,12 +185,10 @@ public partial class App : Application
 
             var settings = _settingsService.Settings;
             if (settings.SelectedModel != previousModel ||
-                settings.Language != previousLanguage ||
-                settings.ModelPath != previousModelPath)
+                settings.Language != previousLanguage)
             {
                 previousModel = settings.SelectedModel;
                 previousLanguage = settings.Language;
-                previousModelPath = settings.ModelPath;
                 await _transcriptionService!.ReloadAsync();
             }
         };

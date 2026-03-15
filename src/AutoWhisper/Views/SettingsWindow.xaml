@@ -95,21 +95,6 @@
                 <Border Background="#10FFFFFF" CornerRadius="8" Padding="16" Margin="0,0,0,8">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Left">
-                            <TextBlock Text="Custom model file" FontWeight="SemiBold" />
-                            <TextBlock x:Name="ModelPathText" Text="Not configured" Opacity="0.6" FontSize="12"
-                                       MaxWidth="280" TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
-                        <ui:Button Content="Browse"
-                                   Click="BrowseModel_Click"
-                                   Appearance="Secondary"
-                                   VerticalAlignment="Center"
-                                   HorizontalAlignment="Right" />
-                    </DockPanel>
-                </Border>
-
-                <Border Background="#10FFFFFF" CornerRadius="8" Padding="16" Margin="0,0,0,8">
-                    <DockPanel>
-                        <StackPanel DockPanel.Dock="Left">
                             <TextBlock Text="Language" FontWeight="SemiBold" />
                             <TextBlock Text="Multilingual models required for non-English" Opacity="0.6" FontSize="12" />
                         </StackPanel>

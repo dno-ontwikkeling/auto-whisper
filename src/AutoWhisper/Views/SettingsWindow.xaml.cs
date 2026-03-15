@@ -53,11 +53,6 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
         }
         LanguageCombo.SelectedIndex = langIndex;
 
-        // Custom model path
-        ModelPathText.Text = string.IsNullOrEmpty(settings.ModelPath)
-            ? "None (using selected model above)"
-            : Path.GetFileName(settings.ModelPath);
-
         var runtime = RuntimeDetectionService.DetectBestRuntime();
         RuntimeDisplay.Text = RuntimeDetectionService.GetRuntimeDisplayName(runtime);
 
@@ -284,22 +279,6 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
     private void StartupToggle_Changed(object sender, RoutedEventArgs e)
     {
         AutoSave();
-    }
-
-    private void BrowseModel_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new OpenFileDialog
-        {
-            Filter = "GGML Model Files (*.bin)|*.bin|All Files (*.*)|*.*",
-            Title = "Select Whisper Model File"
-        };
-
-        if (dialog.ShowDialog() == true)
-        {
-            _settingsService.Settings.ModelPath = dialog.FileName;
-            ModelPathText.Text = Path.GetFileName(dialog.FileName);
-            AutoSave();
-        }
     }
 
     private void LanguageCombo_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)

@@ -9,8 +9,8 @@ All processing happens locally using OpenAI's Whisper model. No cloud services, 
 - **Hold-to-record dictation** — press and hold a configurable hotkey (default: Ctrl+Shift+Space), speak, release to transcribe and paste
 - **Fully offline** — Whisper runs locally, audio is processed in-memory only
 - **GPU acceleration** — auto-detects CUDA (NVIDIA) and Vulkan (AMD/Intel) with CPU fallback
-- **Multiple models** — 9 Whisper model sizes from Tiny (39 MB) to Large v3 (3.1 GB)
-- **29+ languages** — auto-detection or manual language selection
+- **Multiple models** — 5 multilingual Whisper model sizes from Tiny (39 MB) to Large v3 (3.1 GB)
+- **28 languages** — auto-detection or manual language selection
 - **System tray** — runs silently in the background with single-instance enforcement
 - **Visual overlay** — animated recording indicator with elapsed time
 

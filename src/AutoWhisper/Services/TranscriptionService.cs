@@ -31,8 +31,6 @@ public class TranscriptionService : IDisposable
                 var runtime = RuntimeDetectionService.DetectBestRuntime();
                 Logger.Log($"GPU runtime detected: {RuntimeDetectionService.GetRuntimeDisplayName(runtime)}");
                 Logger.Log($"Selected model (settings): {_settings.Settings.SelectedModel}");
-                Logger.Log($"Custom model path (settings): {(string.IsNullOrEmpty(_settings.Settings.ModelPath) ? "(none)" : _settings.Settings.ModelPath)}");
-
                 var (modelPath, isFallback, fallbackModelName) = _settings.ResolveModelPathWithDiagnostics();
                 if (string.IsNullOrEmpty(modelPath))
                 {

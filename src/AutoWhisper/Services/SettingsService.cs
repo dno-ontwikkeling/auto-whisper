@@ -10,8 +10,7 @@ public class AppSettings
 {
     public KeyCode HotkeyKey { get; set; } = KeyCode.VcSpace;
     public EventMask HotkeyModifiers { get; set; } = EventMask.LeftCtrl | EventMask.LeftShift;
-    public string ModelPath { get; set; } = "";
-    public string SelectedModel { get; set; } = "small.en";
+    public string SelectedModel { get; set; } = "small";
     public string Language { get; set; } = "auto";
     public bool LaunchAtStartup { get; set; } = false;
     public string SelectedMicrophone { get; set; } = "";
@@ -34,17 +33,11 @@ public class SettingsService
 
     public static readonly WhisperModel[] AvailableModels =
     [
-        // English-only models (faster, smaller)
-        new("tiny.en",   "ggml-tiny.en.bin",   "Tiny English (39 MB)",        39,  "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin"),
-        new("base.en",   "ggml-base.en.bin",   "Base English (142 MB)",       142, "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin"),
-        new("small.en",  "ggml-small.en.bin",  "Small English (466 MB)",      466, "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin"),
-        new("medium.en", "ggml-medium.en.bin", "Medium English (1.5 GB)",    1500, "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.en.bin"),
-        // Multilingual models
-        new("tiny",      "ggml-tiny.bin",      "Tiny Multilingual (39 MB)",    39, "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin"),
-        new("base",      "ggml-base.bin",      "Base Multilingual (142 MB)",  142, "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin"),
-        new("small",     "ggml-small.bin",     "Small Multilingual (466 MB)", 466, "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin"),
-        new("medium",    "ggml-medium.bin",    "Medium Multilingual (1.5 GB)",1500,"https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin"),
-        new("large-v3",  "ggml-large-v3.bin",  "Large v3 (3.1 GB)",          3100, "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin"),
+        new("tiny",      "ggml-tiny.bin",      "Tiny (39 MB)",        39, "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin"),
+        new("base",      "ggml-base.bin",      "Base (142 MB)",      142, "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin"),
+        new("small",     "ggml-small.bin",     "Small (466 MB)",     466, "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin"),
+        new("medium",    "ggml-medium.bin",    "Medium (1.5 GB)",   1500, "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin"),
+        new("large-v3",  "ggml-large-v3.bin",  "Large v3 (3.1 GB)", 3100, "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin"),
     ];
 
     public static readonly (string Code, string Name)[] SupportedLanguages =
@@ -102,10 +95,6 @@ public class SettingsService
 
     public (string Path, bool IsFallback, string? FallbackModelName) ResolveModelPathWithDiagnostics()
     {
-        // Custom path takes priority
-        if (!string.IsNullOrEmpty(Settings.ModelPath) && File.Exists(Settings.ModelPath))
-            return (Settings.ModelPath, false, null);
-
         // Find the selected model
         var selected = Array.Find(AvailableModels, m => m.Name == Settings.SelectedModel);
         if (selected is not null)
