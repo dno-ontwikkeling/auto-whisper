@@ -3,12 +3,13 @@ using Whisper.net;
 
 namespace AutoWhisper.Services;
 
-public class TranscriptionService
+public class TranscriptionService : IDisposable
 {
     private readonly SettingsService _settings;
     private WhisperFactory? _factory;
     private WhisperProcessor? _processor;
     private bool _isInitialized;
+    private bool _disposed;
 
     public bool IsInitialized => _isInitialized;
     public string? LoadError { get; private set; }
@@ -32,12 +33,18 @@ public class TranscriptionService
                 Logger.Log($"Selected model (settings): {_settings.Settings.SelectedModel}");
                 Logger.Log($"Custom model path (settings): {(string.IsNullOrEmpty(_settings.Settings.ModelPath) ? "(none)" : _settings.Settings.ModelPath)}");
 
-                var modelPath = _settings.ResolveModelPath();
+                var (modelPath, isFallback, fallbackModelName) = _settings.ResolveModelPathWithDiagnostics();
                 if (string.IsNullOrEmpty(modelPath))
                 {
-                    LoadError = "No Whisper model found. Please configure a model path in Settings.";
+                    LoadError = "No Whisper model found. Please download a model in Settings.";
                     _isInitialized = false;
                     return;
+                }
+
+                if (isFallback)
+                {
+                    Logger.Log($"WARNING: Selected model '{_settings.Settings.SelectedModel}' not found. Using fallback: '{fallbackModelName}'");
+                    LoadError = $"Selected model not found; using {fallbackModelName} instead. Download your preferred model in Settings.";
                 }
 
                 Logger.Log($"Resolved model path: {modelPath}");
@@ -53,26 +60,27 @@ public class TranscriptionService
                 _processor = builder.Build();
 
                 _isInitialized = true;
-                LoadError = null;
+                if (!isFallback)
+                    LoadError = null;
                 Logger.Log($"Whisper model loaded successfully: {Path.GetFileName(modelPath)} (runtime: {RuntimeDetectionService.GetRuntimeDisplayName(runtime)})");
             }
             catch (Exception ex)
             {
                 LoadError = $"Failed to load Whisper model: {ex.Message}";
                 _isInitialized = false;
-                Logger.Log($"Whisper model load failed: {ex.Message}");
+                Logger.Log($"Whisper model load failed: {ex}");
             }
         });
     }
 
     public async Task ReloadAsync()
     {
-        Console.Error.WriteLine("[AutoWhisper] Reloading Whisper model...");
+        Logger.Log("Reloading Whisper model...");
         await InitializeAsync();
         if (_isInitialized)
-            Console.Error.WriteLine("[AutoWhisper] Whisper model reloaded successfully.");
+            Logger.Log("Whisper model reloaded successfully.");
         else
-            Console.Error.WriteLine($"[AutoWhisper] Whisper model reload failed: {LoadError}");
+            Logger.Log($"Whisper model reload failed: {LoadError}");
     }
 
     public async Task<string> TranscribeAsync(MemoryStream audioStream)
@@ -97,7 +105,10 @@ public class TranscriptionService
 
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
         _processor?.Dispose();
         _factory?.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

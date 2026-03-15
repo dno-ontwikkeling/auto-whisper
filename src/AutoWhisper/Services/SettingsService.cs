@@ -20,7 +20,9 @@ public class AppSettings
 
 public class SettingsService
 {
-    private static readonly string AppFolder = AppDomain.CurrentDomain.BaseDirectory;
+    private static readonly string AppFolder = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "AutoWhisper");
 
     private static readonly string SettingsFilePath = Path.Combine(AppFolder, "settings.json");
 
@@ -94,9 +96,15 @@ public class SettingsService
 
     public string ResolveModelPath()
     {
+        var (path, _, _) = ResolveModelPathWithDiagnostics();
+        return path;
+    }
+
+    public (string Path, bool IsFallback, string? FallbackModelName) ResolveModelPathWithDiagnostics()
+    {
         // Custom path takes priority
         if (!string.IsNullOrEmpty(Settings.ModelPath) && File.Exists(Settings.ModelPath))
-            return Settings.ModelPath;
+            return (Settings.ModelPath, false, null);
 
         // Find the selected model
         var selected = Array.Find(AvailableModels, m => m.Name == Settings.SelectedModel);
@@ -104,36 +112,61 @@ public class SettingsService
         {
             var path = GetModelPath(selected);
             if (File.Exists(path))
-                return path;
+                return (path, false, null);
         }
 
-        // Fallback: try any downloaded model
+        // Fallback: try any downloaded model (with warning)
         foreach (var model in AvailableModels)
         {
             var path = GetModelPath(model);
             if (File.Exists(path))
-                return path;
+                return (path, true, model.Name);
         }
 
-        return "";
+        return ("", false, null);
     }
 
     public void Load()
     {
-        if (!File.Exists(SettingsFilePath))
+        try
         {
-            Settings = new AppSettings();
-            Save();
-            return;
-        }
+            Directory.CreateDirectory(AppFolder);
 
-        var json = File.ReadAllText(SettingsFilePath);
-        Settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
+            if (!File.Exists(SettingsFilePath))
+            {
+                Settings = new AppSettings();
+                Save();
+                return;
+            }
+
+            var json = File.ReadAllText(SettingsFilePath);
+            Settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"Failed to load settings (using defaults): {ex}");
+            // Back up the corrupt file for diagnostics
+            try
+            {
+                if (File.Exists(SettingsFilePath))
+                    File.Copy(SettingsFilePath, SettingsFilePath + ".corrupt", overwrite: true);
+            }
+            catch { /* best effort */ }
+            Settings = new AppSettings();
+        }
     }
 
     public void Save()
     {
-        var json = JsonSerializer.Serialize(Settings, JsonOptions);
-        File.WriteAllText(SettingsFilePath, json);
+        try
+        {
+            Directory.CreateDirectory(AppFolder);
+            var json = JsonSerializer.Serialize(Settings, JsonOptions);
+            File.WriteAllText(SettingsFilePath, json);
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"Failed to save settings: {ex.Message}");
+        }
     }
 }

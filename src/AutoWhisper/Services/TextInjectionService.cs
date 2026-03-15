@@ -12,49 +12,56 @@ public class TextInjectionService
     {
         if (string.IsNullOrWhiteSpace(text)) return;
 
+        // Save previous clipboard and set new text — must run on UI thread
+        IDataObject? previousClipboard = null;
+        bool clipboardSet = false;
+
         await Application.Current.Dispatcher.InvokeAsync(() =>
         {
-            // Preserve current clipboard content
-            IDataObject? previousClipboard = null;
             try
             {
                 previousClipboard = Clipboard.GetDataObject();
             }
-            catch
+            catch (Exception ex)
             {
-                // Clipboard may be locked by another app
+                Logger.Log($"Clipboard read locked, content will not be restored: {ex.Message}");
             }
 
             try
             {
                 Clipboard.SetText(text);
+                clipboardSet = true;
             }
-            catch
+            catch (Exception ex)
             {
-                // If clipboard fails, fall back to typing
+                Logger.Log($"Clipboard write failed, falling back to keyboard typing: {ex.Message}");
                 _simulator.Keyboard.TextEntry(text);
-                return;
             }
+        });
 
-            // Small delay to ensure clipboard is populated
-            Thread.Sleep(50);
+        if (!clipboardSet) return;
 
-            // Simulate Ctrl+V
-            _simulator.Keyboard.ModifiedKeyStroke(
-                VirtualKeyCode.CONTROL,
-                VirtualKeyCode.VK_V);
+        // Delay off the UI thread
+        await Task.Delay(50);
 
-            // Small delay then restore clipboard
-            Thread.Sleep(100);
+        // Simulate Ctrl+V (does not require UI thread)
+        _simulator.Keyboard.ModifiedKeyStroke(
+            VirtualKeyCode.CONTROL,
+            VirtualKeyCode.VK_V);
 
+        // Delay then restore clipboard on UI thread
+        await Task.Delay(100);
+
+        await Application.Current.Dispatcher.InvokeAsync(() =>
+        {
             try
             {
                 if (previousClipboard is not null)
                     Clipboard.SetDataObject(previousClipboard);
             }
-            catch
+            catch (Exception ex)
             {
-                // Best effort restoration
+                Logger.Log($"Clipboard restore failed: {ex.Message}");
             }
         });
     }

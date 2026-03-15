@@ -10,14 +10,16 @@ namespace AutoWhisper.Views;
 
 public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
 {
-    private static readonly HttpClient HttpClient = new();
+    private static readonly HttpClient HttpClient = new(
+        new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(2) });
+
     private readonly SettingsService _settingsService;
     private readonly HotkeyService _hotkeyService;
     private bool _isCapturingHotkey;
     private bool _isLoading;
     private CancellationTokenSource? _downloadCts;
 
-    public event Action? HotkeyChanged;
+    public event Action? SettingsSaved;
 
     public SettingsWindow(SettingsService settingsService, HotkeyService hotkeyService)
     {
@@ -61,11 +63,16 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
 
         MicrophoneCombo.Items.Clear();
         var devices = AudioCaptureService.GetAvailableDevices();
-        foreach (var device in devices)
-            MicrophoneCombo.Items.Add(device);
+        int micIndex = 0;
+        for (int i = 0; i < devices.Count; i++)
+        {
+            MicrophoneCombo.Items.Add(devices[i]);
+            if (devices[i] == settings.SelectedMicrophone)
+                micIndex = i;
+        }
 
         if (MicrophoneCombo.Items.Count > 0)
-            MicrophoneCombo.SelectedIndex = 0;
+            MicrophoneCombo.SelectedIndex = micIndex;
 
         _isLoading = false;
     }
@@ -88,7 +95,7 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
 
         _settingsService.Save();
         SetAutoStart(settings.LaunchAtStartup);
-        HotkeyChanged?.Invoke();
+        SettingsSaved?.Invoke();
     }
 
     private void PopulateModelCombo()
@@ -147,11 +154,12 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
         DownloadProgressBar.Value = 0;
         DownloadProgressText.Text = $"Downloading {model.DisplayName}...";
 
+        string? tempPath = null;
         try
         {
             Directory.CreateDirectory(_settingsService.ModelsFolder);
             var destPath = _settingsService.GetModelPath(model);
-            var tempPath = destPath + ".tmp";
+            tempPath = destPath + ".tmp";
 
             using (var response = await HttpClient.GetAsync(model.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, _downloadCts.Token))
             {
@@ -184,6 +192,7 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
             if (File.Exists(destPath))
                 File.Delete(destPath);
             File.Move(tempPath, destPath);
+            tempPath = null; // rename succeeded, don't delete in finally
 
             DownloadProgressText.Text = $"{model.DisplayName} downloaded successfully.";
             PopulateModelCombo();
@@ -201,6 +210,12 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
         finally
         {
             _downloadCts = null;
+            // Clean up partial download file
+            if (tempPath is not null)
+            {
+                try { File.Delete(tempPath); }
+                catch { /* best effort */ }
+            }
         }
     }
 
@@ -311,23 +326,42 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
         base.OnClosed(e);
     }
 
-    private static void SetAutoStart(bool enable)
+    private void SetAutoStart(bool enable)
     {
         const string registryKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
         const string appName = "AutoWhisper";
 
-        using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(registryKey, writable: true);
-        if (key is null) return;
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(registryKey, writable: true);
+            if (key is null)
+            {
+                Logger.Log($"SetAutoStart failed: registry key '{registryKey}' could not be opened.");
+                if (enable)
+                {
+                    _settingsService.Settings.LaunchAtStartup = false;
+                    _settingsService.Save();
+                    _isLoading = true;
+                    StartupToggle.IsChecked = false;
+                    _isLoading = false;
+                }
+                return;
+            }
 
-        if (enable)
-        {
-            var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
-            if (exePath is not null)
-                key.SetValue(appName, $"\"{exePath}\"", RegistryValueKind.String);
+            if (enable)
+            {
+                var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+                if (exePath is not null)
+                    key.SetValue(appName, $"\"{exePath}\"", RegistryValueKind.String);
+            }
+            else
+            {
+                key.DeleteValue(appName, throwOnMissingValue: false);
+            }
         }
-        else
+        catch (Exception ex)
         {
-            key.DeleteValue(appName, throwOnMissingValue: false);
+            Logger.Log($"SetAutoStart failed: {ex.Message}");
         }
     }
 }

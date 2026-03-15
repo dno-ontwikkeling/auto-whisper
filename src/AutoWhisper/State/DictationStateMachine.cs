@@ -87,7 +87,6 @@ public class DictationStateMachine
         try
         {
             var text = await _transcriptionService.TranscribeAsync(audioStream);
-            audioStream.Dispose();
 
             if (string.IsNullOrWhiteSpace(text))
             {
@@ -100,10 +99,12 @@ public class DictationStateMachine
         }
         catch (Exception ex)
         {
+            Logger.Log($"Transcription failed: {ex}");
             Error?.Invoke($"Transcription failed: {ex.Message}");
         }
         finally
         {
+            audioStream.Dispose();
             TransitionTo(DictationState.Idle);
         }
     }

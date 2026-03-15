@@ -26,6 +26,7 @@ public partial class App : Application
 
         DispatcherUnhandledException += (_, args) =>
         {
+            Logger.Log($"Unhandled UI exception: {args.Exception}");
             Console.Error.WriteLine($"[AutoWhisper] Unhandled UI exception: {args.Exception}");
             args.Handled = true;
         };
@@ -50,10 +51,17 @@ public partial class App : Application
                 _textInjectionService);
 
             _stateMachine.StateChanged += OnStateChanged;
-            _stateMachine.Error += msg => Console.Error.WriteLine($"[AutoWhisper] Error: {msg}");
+            _stateMachine.Error += msg =>
+            {
+                Logger.Log($"State machine error: {msg}");
+                Console.Error.WriteLine($"[AutoWhisper] Error: {msg}");
+            };
 
             CreateTrayIcon();
             Console.Error.WriteLine("[AutoWhisper] Tray icon created.");
+
+            // Pre-create the recording overlay for reuse
+            _recordingOverlay = new RecordingOverlay();
 
             var hotkeyDisplay = HotkeyDisplayHelper.FormatHotkey(
                 _settingsService.Settings.HotkeyModifiers,
@@ -71,6 +79,7 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
+            Logger.Log($"Startup error: {ex}");
             Console.Error.WriteLine($"[AutoWhisper] Startup error: {ex}");
         }
     }
@@ -86,21 +95,20 @@ public partial class App : Application
                 if (_tickHandler is not null)
                     _stateMachine!.RecordingTick -= _tickHandler;
 
-                _recordingOverlay = new RecordingOverlay();
-                _recordingOverlay.Show();
+                _recordingOverlay?.ResetAndShow();
 
-                _tickHandler = elapsed => _recordingOverlay.UpdateTimer(elapsed);
+                _tickHandler = elapsed => _recordingOverlay?.UpdateTimer(elapsed);
                 _stateMachine!.RecordingTick += _tickHandler;
                 break;
 
             case DictationState.Transcribing:
             case DictationState.Idle:
-                CloseOverlay();
+                HideOverlay();
                 break;
         }
     }
 
-    private void CloseOverlay()
+    private void HideOverlay()
     {
         if (_tickHandler is not null)
         {
@@ -108,11 +116,7 @@ public partial class App : Application
             _tickHandler = null;
         }
 
-        if (_recordingOverlay is not null)
-        {
-            _recordingOverlay.Close();
-            _recordingOverlay = null;
-        }
+        _recordingOverlay?.Hide();
     }
 
     private void CreateTrayIcon()
@@ -125,9 +129,9 @@ public partial class App : Application
             if (iconStream is not null)
                 icon = new System.Drawing.Icon(iconStream);
         }
-        catch
+        catch (Exception ex)
         {
-            // Icon not found, tray will show default
+            Logger.Log($"Tray icon load failed: {ex.Message}");
         }
 
         _trayIcon = new TaskbarIcon
@@ -172,7 +176,7 @@ public partial class App : Application
         var previousModelPath = _settingsService.Settings.ModelPath;
 
         _settingsWindow = new SettingsWindow(_settingsService, _hotkeyService!);
-        _settingsWindow.HotkeyChanged += async () =>
+        _settingsWindow.SettingsSaved += async () =>
         {
             var display = HotkeyDisplayHelper.FormatHotkey(
                 _settingsService.Settings.HotkeyModifiers,
@@ -197,14 +201,15 @@ public partial class App : Application
 
     private void ExitApplication()
     {
-        _hotkeyService?.Dispose();
-        _trayIcon?.Dispose();
-        Shutdown();
+        Shutdown(); // OnExit handles all cleanup
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
         _hotkeyService?.Dispose();
+        _audioCaptureService?.Dispose();
+        _transcriptionService?.Dispose();
+        _recordingOverlay?.Close();
         _trayIcon?.Dispose();
         base.OnExit(e);
     }

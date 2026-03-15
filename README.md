@@ -86,4 +86,4 @@ src/AutoWhisper/
 
 ## Configuration
 
-Settings are stored in `settings.json` next to the executable. Logs are written to `%APPDATA%\AutoWhisper\autowhisper.log`.
+Settings are stored in `%APPDATA%\AutoWhisper\settings.json`. Logs are written to `%APPDATA%\AutoWhisper\autowhisper.log`. Models are stored in the `Models/` folder next to the executable.

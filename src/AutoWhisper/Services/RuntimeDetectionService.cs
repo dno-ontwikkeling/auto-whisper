@@ -11,7 +11,12 @@ public enum GpuRuntime
 
 public static class RuntimeDetectionService
 {
-    public static GpuRuntime DetectBestRuntime()
+    private static readonly Lazy<GpuRuntime> s_cached =
+        new(DetectBestRuntimeInternal, LazyThreadSafetyMode.ExecutionAndPublication);
+
+    public static GpuRuntime DetectBestRuntime() => s_cached.Value;
+
+    private static GpuRuntime DetectBestRuntimeInternal()
     {
         if (IsCudaAvailable())
             return GpuRuntime.Cuda;
@@ -30,8 +35,13 @@ public static class RuntimeDetectionService
             NativeLibrary.Free(handle);
             return true;
         }
-        catch
+        catch (DllNotFoundException)
         {
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"Unexpected error during CUDA detection: {ex.Message}");
             return false;
         }
     }
@@ -44,8 +54,13 @@ public static class RuntimeDetectionService
             NativeLibrary.Free(handle);
             return true;
         }
-        catch
+        catch (DllNotFoundException)
         {
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"Unexpected error during Vulkan detection: {ex.Message}");
             return false;
         }
     }

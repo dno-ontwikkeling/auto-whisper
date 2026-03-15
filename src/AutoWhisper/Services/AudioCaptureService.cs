@@ -3,13 +3,14 @@ using NAudio.Wave;
 
 namespace AutoWhisper.Services;
 
-public class AudioCaptureService
+public class AudioCaptureService : IDisposable
 {
     private WaveInEvent? _waveIn;
     private MemoryStream? _audioBuffer;
     private WaveFileWriter? _writer;
     private readonly object _lock = new();
     private long _totalBytesRecorded;
+    private Exception? _recordingError;
 
     public bool IsRecording { get; private set; }
 
@@ -20,6 +21,7 @@ public class AudioCaptureService
             if (IsRecording) return;
 
             _totalBytesRecorded = 0;
+            _recordingError = null;
             _audioBuffer = new MemoryStream();
             _waveIn = new WaveInEvent
             {
@@ -51,7 +53,10 @@ public class AudioCaptureService
     private void OnRecordingStopped(object? sender, StoppedEventArgs e)
     {
         if (e.Exception is not null)
-            Logger.Log($"Recording error: {e.Exception.Message}");
+        {
+            Logger.Log($"Recording error: {e.Exception}");
+            _recordingError = e.Exception;
+        }
     }
 
     public MemoryStream? StopRecording()
@@ -73,29 +78,45 @@ public class AudioCaptureService
 
             Logger.Log($"Recording stopped. Total audio bytes={_totalBytesRecorded}, Stream length={_audioBuffer?.Length ?? 0}");
 
+            // If a recording error occurred, discard the buffer
+            if (_recordingError is not null)
+            {
+                Logger.Log("Discarding audio buffer due to recording error.");
+                _audioBuffer?.Dispose();
+                var result = _audioBuffer;
+                _audioBuffer = null;
+                return null;
+            }
+
             if (_audioBuffer is { Length: > 44 }) // >44 means more than just a WAV header
             {
-                // Check if there's actual audio content (not just silence)
+                // Calculate RMS using streaming approach — no large allocation
                 _audioBuffer.Position = 44; // skip WAV header
-                var samples = new byte[_audioBuffer.Length - 44];
-                _audioBuffer.Read(samples, 0, samples.Length);
-
-                // Calculate RMS to detect silence
                 double sumSquares = 0;
-                for (int i = 0; i < samples.Length - 1; i += 2)
+                long sampleCount = 0;
+                var chunk = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = _audioBuffer.Read(chunk, 0, chunk.Length)) > 0)
                 {
-                    short sample = (short)(samples[i] | (samples[i + 1] << 8));
-                    sumSquares += sample * (double)sample;
+                    for (int i = 0; i < bytesRead - 1; i += 2)
+                    {
+                        short sample = (short)(chunk[i] | (chunk[i + 1] << 8));
+                        sumSquares += sample * (double)sample;
+                        sampleCount++;
+                    }
                 }
-                double rms = Math.Sqrt(sumSquares / (samples.Length / 2));
+                double rms = sampleCount > 0 ? Math.Sqrt(sumSquares / sampleCount) : 0;
                 Logger.Log($"Audio RMS level: {rms:F0} (silence < 100, speech typically > 500)");
 
                 _audioBuffer.Position = 0;
-                return _audioBuffer;
+                var buffer = _audioBuffer;
+                _audioBuffer = null; // transfer ownership to caller
+                return buffer;
             }
 
             Logger.Log("Audio buffer too small, discarding.");
             _audioBuffer?.Dispose();
+            _audioBuffer = null;
             return null;
         }
     }
@@ -110,8 +131,24 @@ public class AudioCaptureService
         }
         return devices;
     }
+
+    public void Dispose()
+    {
+        lock (_lock)
+        {
+            _writer?.Dispose();
+            _waveIn?.Dispose();
+            _audioBuffer?.Dispose();
+        }
+        GC.SuppressFinalize(this);
+    }
 }
 
+/// <summary>
+/// Wraps a stream to suppress disposal. Required because NAudio's WaveFileWriter
+/// calls Dispose() on its underlying stream, which would close the MemoryStream
+/// before we can read the recorded audio back.
+/// </summary>
 internal class IgnoreDisposeStream : Stream
 {
     private readonly Stream _inner;
