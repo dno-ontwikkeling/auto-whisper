@@ -15,14 +15,16 @@ ArchitecturesInstallIn64BitMode=x64compatible
 SetupIconFile=src\AutoWhisper\Assets\app-icon.ico
 PrivilegesRequired=admin
 WizardStyle=modern
+CloseApplications=force
 
 [Files]
 Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\Models"
+Type: filesandordirs; Name: "{app}\runtimes"
 Type: files; Name: "{app}\settings.json"
-Type: dirifempty; Name: "{app}"
+Type: files; Name: "{app}\autowhisper.log"
 
 [Icons]
 Name: "{group}\AutoWhisper"; Filename: "{app}\AutoWhisper.exe"
@@ -32,19 +34,21 @@ Name: "{autodesktop}\AutoWhisper"; Filename: "{app}\AutoWhisper.exe"; Tasks: des
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"
 Name: "startupicon"; Description: "Launch AutoWhisper at Windows startup"; GroupDescription: "Startup:"
+Name: "runasadmin"; Description: "Run as administrator (required to paste text into admin applications)"; GroupDescription: "Permissions:"
 
 [Registry]
 Root: HKCU; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "AutoWhisper"; ValueData: """{app}\AutoWhisper.exe"""; Flags: uninsdeletevalue; Tasks: startupicon
+Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers"; ValueType: string; ValueName: "{app}\AutoWhisper.exe"; ValueData: "~ RUNASADMIN"; Flags: uninsdeletevalue; Tasks: runasadmin
 
 [Run]
-Filename: "{app}\AutoWhisper.exe"; Description: "Launch AutoWhisper"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\AutoWhisper.exe"; Parameters: "--show-settings"; Description: "Launch AutoWhisper"; Flags: shellexec nowait postinstall skipifsilent
 
 [Code]
 var
   ModelPage: TInputOptionWizardPage;
   LanguageCustomPage: TWizardPage;
   LanguageCombo: TNewComboBox;
-  DownloadPage: TOutputProgressWizardPage;
+  DownloadPage: TDownloadWizardPage;
 
 function GetModelFileName(Index: Integer): String;
 begin
@@ -117,9 +121,7 @@ end;
 function OnDownloadProgress(const Url, FileName: String; const Progress, ProgressMax: Int64): Boolean;
 begin
   if ProgressMax <> 0 then
-    DownloadPage.SetProgress(Progress, ProgressMax)
-  else
-    DownloadPage.SetProgress(0, 1);
+    Log(Format('Download progress: %d of %d bytes', [Progress, ProgressMax]));
   Result := True;
 end;
 
@@ -131,10 +133,11 @@ begin
   DestFile := ModelDir + '\' + GetModelFileName(ModelIndex);
   TempFile := ExpandConstant('{tmp}\') + GetModelFileName(ModelIndex);
 
+  DownloadPage.Clear;
+  DownloadPage.Add(GetModelUrl(ModelIndex), GetModelFileName(ModelIndex), '');
   DownloadPage.Show;
   try
-    DownloadPage.SetText('Downloading ' + GetModelFileName(ModelIndex) + '...', '');
-    DownloadTemporaryFile(GetModelUrl(ModelIndex), GetModelFileName(ModelIndex), '', @OnDownloadProgress);
+    DownloadPage.Download;
 
     if not FileExists(TempFile) then
     begin
@@ -256,9 +259,42 @@ begin
   LanguageCombo.Items.Add('Indonesian');
   LanguageCombo.ItemIndex := 0;
 
-  // Download progress page
-  DownloadPage := CreateOutputProgressPage('Downloading Model',
-    'Please wait while the speech recognition model is downloaded...');
+  // Download page with cancel button
+  DownloadPage := CreateDownloadPage(
+    'Downloading Model',
+    'Please wait while the speech recognition model is downloaded...',
+    @OnDownloadProgress);
+end;
+
+function KillAutoWhisper: Boolean;
+var
+  ResultCode: Integer;
+begin
+  Exec('taskkill.exe', '/F /IM AutoWhisper.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  // Wait for process to fully release file handles
+  Sleep(1000);
+  Result := True;
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  KillAutoWhisper;
+  Result := '';
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  AppDir: String;
+begin
+  if CurUninstallStep = usUninstall then
+    KillAutoWhisper;
+
+  if CurUninstallStep = usPostUninstall then
+  begin
+    AppDir := ExpandConstant('{app}');
+    if DirExists(AppDir) then
+      DelTree(AppDir, True, True, True);
+  end;
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);

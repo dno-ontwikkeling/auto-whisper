@@ -76,6 +76,9 @@ public partial class App : Application
                 Console.Error.WriteLine("[AutoWhisper] Whisper model loaded. Ready!");
             else
                 Console.Error.WriteLine($"[AutoWhisper] Model load failed: {_transcriptionService.LoadError}");
+
+            if (Environment.GetCommandLineArgs().Contains("--show-settings"))
+                ShowSettings();
         }
         catch (Exception ex)
         {
@@ -194,6 +197,9 @@ public partial class App : Application
         };
         _settingsWindow.Show();
         _settingsWindow.Activate();
+        _settingsWindow.Topmost = true;
+        _settingsWindow.Topmost = false;
+        _settingsWindow.Focus();
     }
 
     private void ExitApplication()
