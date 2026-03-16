@@ -228,6 +228,10 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
         HotkeyDisplay.Text = "Press a key combo...";
         HotkeyBorder.Background = new SolidColorBrush(Color.FromArgb(0x40, 0xEF, 0x44, 0x44));
 
+        // Move focus away from the Cancel button so key presses don't activate it
+        HotkeyBorder.Focusable = true;
+        HotkeyBorder.Focus();
+
         _hotkeyService.HotkeyCaptured += OnHotkeyCaptured;
         _hotkeyService.StartCapture();
     }
