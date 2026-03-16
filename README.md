@@ -8,19 +8,27 @@ All processing happens locally using OpenAI's Whisper model. No cloud services, 
 
 - **Hold-to-record dictation** — press and hold a configurable hotkey (default: Ctrl+Shift+Space), speak, release to transcribe and paste
 - **Fully offline** — Whisper runs locally, audio is processed in-memory only
-- **GPU acceleration** — auto-detects CUDA (NVIDIA) and Vulkan (AMD/Intel) with CPU fallback
+- **GPU acceleration** — auto-detects CUDA (NVIDIA) and Vulkan (AMD/Intel/NVIDIA) with CPU fallback
 - **Multiple models** — 5 multilingual Whisper model sizes from Tiny (39 MB) to Large v3 (3.1 GB)
+- **In-app model download** — download models directly from Hugging Face with progress tracking and cancellation
+- **Automatic model fallback** — if the selected model is missing, falls back to any available downloaded model
 - **28 languages** — auto-detection or manual language selection
 - **System tray** — runs silently in the background with single-instance enforcement
-- **Visual overlay** — animated recording indicator with elapsed time
+- **Visual overlay** — animated recording indicator with elapsed time, shown at the top-center of the screen
+- **Interactive hotkey capture** — click "Change" in settings and press any key combo to set a new hotkey
+- **Clipboard preservation** — previous clipboard contents are restored after pasting
+- **Launch at startup** — optional Windows startup integration via settings
 
 ## Getting Started
 
 ### Prerequisites
 
+**To run (installer):**
 - Windows 10 or 11
+- Optional: NVIDIA GPU drivers for CUDA acceleration, or up-to-date GPU drivers for Vulkan acceleration
+
+**To build from source:**
 - .NET 10 SDK
-- Optional: [CUDA Toolkit 12+](https://developer.nvidia.com/cuda-downloads) for NVIDIA GPU acceleration, or Vulkan SDK for AMD/Intel GPU acceleration
 
 ### Build and Run
 
@@ -39,7 +47,9 @@ dotnet run --project src/AutoWhisper/AutoWhisper.csproj
 
 ### Installer
 
-An Inno Setup installer script (`installer.iss`) is included. Build with [Inno Setup](https://jrsoftware.org/isinfo.php) to produce a standalone setup executable.
+An Inno Setup installer script (`installer.iss`) is included for building a standalone setup executable locally.
+
+**Automated releases:** Every push to `main` with a conventional commit (`fix:`, `feat:`) triggers a GitHub Actions workflow that auto-tags the version (SemVer), builds the app, compiles the installer, and publishes it as a GitHub Release.
 
 ## Usage
 
@@ -48,7 +58,7 @@ An Inno Setup installer script (`installer.iss`) is included. Build with [Inno S
 3. Release the hotkey
 4. The overlay shows transcription progress, then the text is pasted at the cursor
 
-Works in any application that accepts text input (editors, browsers, chat apps, etc.).
+Recordings shorter than 500 ms are discarded automatically. Works in any application that accepts text input (editors, browsers, chat apps, etc.).
 
 ## Tech Stack
 
@@ -70,9 +80,9 @@ src/AutoWhisper/
 ├── App.xaml.cs                         # Tray icon, service wiring
 ├── Services/
 │   ├── AudioCaptureService.cs          # Microphone recording (16kHz mono)
-│   ├── HotkeyService.cs               # Global keyboard hook
+│   ├── HotkeyService.cs               # Global keyboard hook with interactive capture
 │   ├── TranscriptionService.cs         # Whisper.net inference
-│   ├── TextInjectionService.cs         # Clipboard-based paste
+│   ├── TextInjectionService.cs         # Clipboard paste with keyboard fallback
 │   ├── SettingsService.cs              # JSON config persistence
 │   ├── RuntimeDetectionService.cs      # GPU detection
 │   ├── HotkeyDisplayHelper.cs         # Hotkey formatting for display
@@ -86,4 +96,4 @@ src/AutoWhisper/
 
 ## Configuration
 
-Settings are stored in `%APPDATA%\AutoWhisper\settings.json`. Logs are written to `%APPDATA%\AutoWhisper\autowhisper.log`. Models are stored in the `Models/` folder next to the executable.
+Settings are stored in `settings.json` next to the executable. Logs are written to `%APPDATA%\AutoWhisper\autowhisper.log`. Models are stored in the `Models/` folder next to the executable.
