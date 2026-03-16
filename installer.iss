@@ -1,13 +1,20 @@
+#ifndef AppVersion
+  #define AppVersion "1.0.0"
+#endif
+#ifndef OutputFilename
+  #define OutputFilename "AutoWhisper-Setup"
+#endif
+
 [Setup]
 AppName=AutoWhisper
-AppVersion=1.0.0
+AppVersion={#AppVersion}
 AppPublisher=DNO Development
 AppPublisherURL=https://github.com/dnodevelopment
 DefaultDirName={commonpf64}\AutoWhisper
 DefaultGroupName=AutoWhisper
 UninstallDisplayIcon={app}\AutoWhisper.exe
 OutputDir=installer-output
-OutputBaseFilename=AutoWhisper-Setup
+OutputBaseFilename={#OutputFilename}
 Compression=lzma2
 SolidCompression=yes
 ArchitecturesAllowed=x64compatible
