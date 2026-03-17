@@ -1,7 +1,5 @@
-# AutoWhisper
-
 <p align="center">
-  <img src="Logos/Logo-text-big.png" alt="AutoWhisper" width="400" />
+  <img src="Logos/Logo-text-big.png" alt="AutoWhisper" width="200" />
 </p>
 
 [![Stable Release](https://img.shields.io/badge/stable_release-v1.2.0-blue)](https://github.com/dno-ontwikkeling/AutoWhisper/releases/tag/v1.2.0)
