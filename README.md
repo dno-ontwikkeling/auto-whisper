@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="Logos/Logo-text-big.png" alt="AutoWhisper" width="200" />
-</p>
+<img src="Logos/Logo-text-big.png" alt="AutoWhisper" width="200" />
 
 [![Latest Release](https://img.shields.io/github/v/release/dno-ontwikkeling/AutoWhisper?label=stable&color=blue)](https://github.com/dno-ontwikkeling/AutoWhisper/releases/latest)
 [![Latest Pre-Release](https://img.shields.io/github/v/release/dno-ontwikkeling/AutoWhisper?include_prereleases&label=pre-release&color=orange)](https://github.com/dno-ontwikkeling/AutoWhisper/releases)
