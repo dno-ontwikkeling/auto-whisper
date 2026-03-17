@@ -1,5 +1,8 @@
 # AutoWhisper
 
+[![Latest Release](https://img.shields.io/github/v/release/dno-ontwikkeling/AutoWhisper?label=release)](https://github.com/dno-ontwikkeling/AutoWhisper/releases/latest)
+[![Latest Pre-Release](https://img.shields.io/github/v/release/dno-ontwikkeling/AutoWhisper?include_prereleases&label=pre-release)](https://github.com/dno-ontwikkeling/AutoWhisper/releases)
+
 A Windows system tray application for voice-to-text dictation. Hold a hotkey, speak, and the transcribed text is automatically pasted at your cursor position — in any application.
 
 All processing happens locally using OpenAI's Whisper model. No cloud services, no API keys, no data leaves your machine.
