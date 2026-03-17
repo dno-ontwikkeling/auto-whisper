@@ -2,7 +2,8 @@
   <img src="Logos/Logo-text-big.png" alt="AutoWhisper" width="200" />
 </p>
 
-[![Stable Release](https://img.shields.io/badge/stable_release-v1.2.0-blue)](https://github.com/dno-ontwikkeling/AutoWhisper/releases/tag/v1.2.0)
+[![Latest Release](https://img.shields.io/github/v/release/dno-ontwikkeling/AutoWhisper?label=stable&color=blue)](https://github.com/dno-ontwikkeling/AutoWhisper/releases/latest)
+[![Latest Pre-Release](https://img.shields.io/github/v/release/dno-ontwikkeling/AutoWhisper?include_prereleases&label=pre-release&color=orange)](https://github.com/dno-ontwikkeling/AutoWhisper/releases)
 
 A Windows system tray application for voice-to-text dictation. Hold a hotkey, speak, and the transcribed text is automatically pasted at your cursor position — in any application.
 
