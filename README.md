@@ -99,3 +99,17 @@ src/AutoWhisper/
 ## Configuration
 
 Settings are stored in `settings.json` next to the executable. Logs are written to `%APPDATA%\AutoWhisper\autowhisper.log`. Models are stored in the `Models/` folder next to the executable.
+
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## Support
+
+- **Bug reports** — use the [Bug Report](https://github.com/dno-ontwikkeling/AutoWhisper/issues/new?template=bug_report.md) issue template
+- **Feature requests** — use the [Feature Request](https://github.com/dno-ontwikkeling/AutoWhisper/issues/new?template=feature_request.md) issue template
+- **Questions** — open a [discussion](https://github.com/dno-ontwikkeling/AutoWhisper/issues) or issue
+
+## License
+
+This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
