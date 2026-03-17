@@ -2,6 +2,7 @@ using System.Windows;
 
 namespace AutoWhisper;
 
+
 public static class Program
 {
     private static Mutex? _mutex;
