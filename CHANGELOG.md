@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.2.0](https://github.com/dno-ontwikkeling/AutoWhisper/compare/v1.1.0...v1.2.0) (2026-03-17)
+
+
+### Features
+
+* replace release-please with direct auto-tagging ([2e61ec2](https://github.com/dno-ontwikkeling/AutoWhisper/commit/2e61ec2))
+
+
+### CI
+
+* mark automatic releases as pre-release ([38af5ae](https://github.com/dno-ontwikkeling/AutoWhisper/commit/38af5ae))
+
+
+### Docs
+
+* add MIT license, contributing guidelines, and issue templates ([9623d37](https://github.com/dno-ontwikkeling/AutoWhisper/commit/9623d37))
+* add CODEOWNERS and branch protection ruleset ([973b847](https://github.com/dno-ontwikkeling/AutoWhisper/commit/973b847))
+* update README with version badge, support, and project info ([d1f4f0e](https://github.com/dno-ontwikkeling/AutoWhisper/commit/d1f4f0e))
+
 ## [1.1.0](https://github.com/dno-ontwikkeling/AutoWhisper/compare/v1.0.0...v1.1.0) (2026-03-16)
 
 
