@@ -108,6 +108,14 @@ public class AudioCaptureService : IDisposable
                 double rms = sampleCount > 0 ? Math.Sqrt(sumSquares / sampleCount) : 0;
                 Logger.Log($"Audio RMS level: {rms:F0} (silence < 100, speech typically > 500)");
 
+                if (rms < 100)
+                {
+                    Logger.Log("Audio below silence threshold, discarding.");
+                    _audioBuffer.Dispose();
+                    _audioBuffer = null;
+                    return null;
+                }
+
                 _audioBuffer.Position = 0;
                 var buffer = _audioBuffer;
                 _audioBuffer = null; // transfer ownership to caller
