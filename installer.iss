@@ -8,6 +8,7 @@
 [Setup]
 AppName=AutoWhisper
 AppVersion={#AppVersion}
+AppVerName=AutoWhisper
 AppPublisher=DNO Development
 AppPublisherURL=https://github.com/dnodevelopment
 DefaultDirName={commonpf64}\AutoWhisper
@@ -52,10 +53,27 @@ Filename: "{app}\AutoWhisper.exe"; Parameters: "--show-settings"; Description: "
 
 [Code]
 var
+  InstallTypePage: TInputOptionWizardPage;
   ModelPage: TInputOptionWizardPage;
   LanguageCustomPage: TWizardPage;
   LanguageCombo: TNewComboBox;
   DownloadPage: TDownloadWizardPage;
+  ExistingInstallDetected: Boolean;
+
+function IsUpgradeInstall: Boolean;
+begin
+  Result := ExistingInstallDetected and (InstallTypePage.SelectedValueIndex = 0);
+end;
+
+function GetExistingUninstallString: String;
+var
+  UninstallKey: String;
+begin
+  Result := '';
+  UninstallKey := 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AutoWhisper_is1';
+  if not RegQueryStringValue(HKLM, UninstallKey, 'UninstallString', Result) then
+    RegQueryStringValue(HKCU, UninstallKey, 'UninstallString', Result);
+end;
 
 function GetModelFileName(Index: Integer): String;
 begin
@@ -197,10 +215,39 @@ begin
            'AutoWhisper will use default settings on first launch.', mbError, MB_OK);
 end;
 
+procedure RunExistingUninstaller;
+var
+  UninstallString: String;
+  ResultCode: Integer;
+begin
+  UninstallString := GetExistingUninstallString;
+  if UninstallString <> '' then
+  begin
+    // Remove surrounding quotes if present
+    if (Length(UninstallString) > 1) and (UninstallString[1] = '"') then
+      UninstallString := Copy(UninstallString, 2, Length(UninstallString) - 2);
+
+    Log('Running existing uninstaller: ' + UninstallString);
+    Exec(UninstallString, '/SILENT /NORESTART', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Log('Uninstaller exited with code: ' + IntToStr(ResultCode));
+    Sleep(1000);
+  end;
+end;
+
 procedure InitializeWizard;
 var
   DescLabel: TNewStaticText;
 begin
+  // Install type page — only meaningful when existing install is detected
+  InstallTypePage := CreateInputOptionPage(wpWelcome,
+    'Existing Installation Detected',
+    'AutoWhisper is already installed on this computer.',
+    'Choose how you would like to proceed:',
+    True, False);
+  InstallTypePage.Add('Update — Keep my settings and downloaded models');
+  InstallTypePage.Add('Clean Install — Remove everything and start fresh');
+  InstallTypePage.SelectedValueIndex := 0;
+
   // Model selection page (radio buttons)
   ModelPage := CreateInputOptionPage(wpSelectTasks,
     'Select Whisper Model',
@@ -273,6 +320,29 @@ begin
     @OnDownloadProgress);
 end;
 
+function InitializeSetup: Boolean;
+begin
+  // Detect existing installation
+  ExistingInstallDetected := GetExistingUninstallString <> '';
+  Result := True;
+end;
+
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := False;
+
+  // Skip install type page when no existing installation
+  if PageID = InstallTypePage.ID then
+    Result := not ExistingInstallDetected;
+
+  // Skip model, language, and task pages on upgrade
+  if IsUpgradeInstall then
+  begin
+    if (PageID = ModelPage.ID) or (PageID = LanguageCustomPage.ID) or (PageID = wpSelectTasks) then
+      Result := True;
+  end;
+end;
+
 function KillAutoWhisper: Boolean;
 var
   ResultCode: Integer;
@@ -286,6 +356,11 @@ end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   KillAutoWhisper;
+
+  // For clean install, run the existing uninstaller first
+  if ExistingInstallDetected and not IsUpgradeInstall then
+    RunExistingUninstaller;
+
   Result := '';
 end;
 
@@ -310,6 +385,10 @@ var
 begin
   if CurStep = ssPostInstall then
   begin
+    // On upgrade, skip model download and settings — keep existing files
+    if IsUpgradeInstall then
+      Exit;
+
     ModelDir := ExpandConstant('{app}\Models');
     if not ForceDirectories(ModelDir) then
     begin

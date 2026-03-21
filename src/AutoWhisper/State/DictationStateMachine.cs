@@ -18,6 +18,7 @@ public class DictationStateMachine
     private readonly AudioCaptureService _audioCaptureService;
     private readonly TranscriptionService _transcriptionService;
     private readonly TextInjectionService _textInjectionService;
+    private readonly SettingsService _settingsService;
     private readonly Stopwatch _recordingTimer = new();
 
     private const int MinRecordingMs = 500;
@@ -34,12 +35,14 @@ public class DictationStateMachine
         HotkeyService hotkeyService,
         AudioCaptureService audioCaptureService,
         TranscriptionService transcriptionService,
-        TextInjectionService textInjectionService)
+        TextInjectionService textInjectionService,
+        SettingsService settingsService)
     {
         _hotkeyService = hotkeyService;
         _audioCaptureService = audioCaptureService;
         _transcriptionService = transcriptionService;
         _textInjectionService = textInjectionService;
+        _settingsService = settingsService;
 
         _hotkeyService.HotkeyDown += OnHotkeyDown;
         _hotkeyService.HotkeyUp += OnHotkeyUp;
@@ -56,7 +59,8 @@ public class DictationStateMachine
         }
 
         TransitionTo(DictationState.Recording);
-        _audioCaptureService.StartRecording();
+        var deviceNumber = ResolveDeviceNumber();
+        _audioCaptureService.StartRecording(deviceNumber);
         _recordingTimer.Restart();
 
         _tickTimer = new System.Threading.Timer(_ =>
@@ -107,6 +111,22 @@ public class DictationStateMachine
             audioStream.Dispose();
             TransitionTo(DictationState.Idle);
         }
+    }
+
+    private int ResolveDeviceNumber()
+    {
+        var selectedMic = _settingsService.Settings.SelectedMicrophone;
+        if (string.IsNullOrEmpty(selectedMic)) return 0;
+
+        var devices = AudioCaptureService.GetAvailableDevices();
+        for (int i = 0; i < devices.Count; i++)
+        {
+            if (devices[i] == selectedMic)
+                return i;
+        }
+
+        Logger.Log($"Selected microphone '{selectedMic}' not found, using default device.");
+        return 0;
     }
 
     private void TransitionTo(DictationState newState)

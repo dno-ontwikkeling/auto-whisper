@@ -59,6 +59,10 @@ jobs:
             installer.iss
         shell: pwsh
 
+      - name: Copy installer with stable name
+        run: Copy-Item "installer-output/AutoWhisper-${{ needs.tag.outputs.new_version }}-Setup.exe" "installer-output/AutoWhisper-Setup.exe"
+        shell: pwsh
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
@@ -66,4 +70,6 @@ jobs:
           name: ${{ needs.tag.outputs.new_tag }}
           body: ${{ needs.tag.outputs.changelog }}
           prerelease: true
-          files: installer-output/AutoWhisper-${{ needs.tag.outputs.new_version }}-Setup.exe
+          files: |
+            installer-output/AutoWhisper-${{ needs.tag.outputs.new_version }}-Setup.exe
+            installer-output/AutoWhisper-Setup.exe

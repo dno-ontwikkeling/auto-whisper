@@ -48,7 +48,8 @@ public partial class App : Application
                 _hotkeyService,
                 _audioCaptureService,
                 _transcriptionService,
-                _textInjectionService);
+                _textInjectionService,
+                _settingsService);
 
             _stateMachine.StateChanged += OnStateChanged;
             _stateMachine.Error += msg =>
