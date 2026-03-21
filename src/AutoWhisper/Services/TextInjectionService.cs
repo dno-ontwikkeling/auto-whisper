@@ -13,14 +13,14 @@ public class TextInjectionService
         if (string.IsNullOrWhiteSpace(text)) return;
 
         // Save previous clipboard and set new text — must run on UI thread
-        IDataObject? previousClipboard = null;
+        DataObject? previousClipboard = null;
         bool clipboardSet = false;
 
         await Application.Current.Dispatcher.InvokeAsync(() =>
         {
             try
             {
-                previousClipboard = Clipboard.GetDataObject();
+                previousClipboard = CloneClipboard();
             }
             catch (Exception ex)
             {
@@ -57,12 +57,58 @@ public class TextInjectionService
             try
             {
                 if (previousClipboard is not null)
-                    Clipboard.SetDataObject(previousClipboard);
+                    Clipboard.SetDataObject(previousClipboard, copy: true);
+                else
+                    Clipboard.Clear();
             }
             catch (Exception ex)
             {
                 Logger.Log($"Clipboard restore failed: {ex.Message}");
             }
         });
+    }
+
+    private static readonly string[] CloneFormats =
+    [
+        DataFormats.UnicodeText,
+        DataFormats.Text,
+        DataFormats.Rtf,
+        DataFormats.Html,
+        DataFormats.FileDrop,
+        DataFormats.Bitmap,
+    ];
+
+    /// <summary>
+    /// Deep-copies the current clipboard contents into a new DataObject.
+    /// The live COM data object returned by Clipboard.GetDataObject() becomes
+    /// invalid once the clipboard is overwritten, so we must snapshot the data.
+    /// </summary>
+    private static DataObject? CloneClipboard()
+    {
+        var source = Clipboard.GetDataObject();
+        if (source is null) return null;
+
+        var clone = new DataObject();
+        bool hasData = false;
+
+        foreach (var format in CloneFormats)
+        {
+            if (!source.GetDataPresent(format)) continue;
+            try
+            {
+                var data = source.GetData(format);
+                if (data is not null)
+                {
+                    clone.SetData(format, data);
+                    hasData = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"Clipboard clone skipped format '{format}': {ex.Message}");
+            }
+        }
+
+        return hasData ? clone : null;
     }
 }
