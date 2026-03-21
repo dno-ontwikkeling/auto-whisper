@@ -55,12 +55,8 @@ jobs:
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
             /DAppVersion=${{ needs.tag.outputs.new_version }} `
-            /DOutputFilename=AutoWhisper-${{ needs.tag.outputs.new_version }}-Setup `
+            /DOutputFilename=AutoWhisper-Setup `
             installer.iss
-        shell: pwsh
-
-      - name: Copy installer with stable name
-        run: Copy-Item "installer-output/AutoWhisper-${{ needs.tag.outputs.new_version }}-Setup.exe" "installer-output/AutoWhisper-Setup.exe"
         shell: pwsh
 
       - name: Create release
@@ -70,6 +66,4 @@ jobs:
           name: ${{ needs.tag.outputs.new_tag }}
           body: ${{ needs.tag.outputs.changelog }}
           prerelease: true
-          files: |
-            installer-output/AutoWhisper-${{ needs.tag.outputs.new_version }}-Setup.exe
-            installer-output/AutoWhisper-Setup.exe
+          files: installer-output/AutoWhisper-Setup.exe
