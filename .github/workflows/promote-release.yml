@@ -1,0 +1,46 @@
+name: Promote Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to promote (e.g. v1.2.3). Leave empty to promote the latest pre-release."
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find pre-release
+        id: pre
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ inputs.tag }}"
+          if [ -n "$tag" ]; then
+            release=$(gh api repos/${{ github.repository }}/releases/tags/"$tag" 2>/dev/null) || {
+              echo "::error::Release with tag $tag not found"
+              exit 1
+            }
+          else
+            release=$(gh api repos/${{ github.repository }}/releases --jq '[.[] | select(.prerelease)][0]')
+          fi
+          if [ "$release" = "null" ] || [ -z "$release" ]; then
+            echo "::error::No pre-release found"
+            exit 1
+          fi
+          echo "id=$(echo "$release" | jq -r '.id')" >> "$GITHUB_OUTPUT"
+          echo "tag=$(echo "$release" | jq -r '.tag_name')" >> "$GITHUB_OUTPUT"
+
+      - name: Promote to stable release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/${{ github.repository }}/releases/${{ steps.pre.outputs.id }} \
+            --method PATCH \
+            --field prerelease=false \
+            --field make_latest=true
+          echo "Promoted ${{ steps.pre.outputs.tag }} to stable release"
