@@ -1,7 +1,9 @@
 using System.IO;
 using System.Net.Http;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using SharpHook.Data;
 using AutoWhisper.Services;
@@ -16,8 +18,11 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
     private readonly SettingsService _settingsService;
     private readonly HotkeyService _hotkeyService;
     private bool _isCapturingHotkey;
-    private bool _isLoading;
+    private bool _isLoading = true;
     private CancellationTokenSource? _downloadCts;
+    private AudioCaptureService? _previewService;
+    private DispatcherTimer? _levelTimer;
+    private double _smoothedRms;
 
     public event Action? SettingsSaved;
 
@@ -56,18 +61,12 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
         var runtime = RuntimeDetectionService.DetectBestRuntime();
         RuntimeDisplay.Text = RuntimeDetectionService.GetRuntimeDisplayName(runtime);
 
-        MicrophoneCombo.Items.Clear();
-        var devices = AudioCaptureService.GetAvailableDevices();
-        int micIndex = 0;
-        for (int i = 0; i < devices.Count; i++)
-        {
-            MicrophoneCombo.Items.Add(devices[i]);
-            if (devices[i] == settings.SelectedMicrophone)
-                micIndex = i;
-        }
+        PopulateMicrophoneCombo(settings.SelectedMicrophone);
 
-        if (MicrophoneCombo.Items.Count > 0)
-            MicrophoneCombo.SelectedIndex = micIndex;
+        ThresholdSlider.Value = settings.SilenceThreshold;
+        ThresholdValueText.Text = $"Threshold: {settings.SilenceThreshold}";
+        NormalizeToggle.IsChecked = settings.NormalizeAudio;
+        UpdateThresholdMarker();
 
         _isLoading = false;
     }
@@ -79,6 +78,8 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
         var settings = _settingsService.Settings;
         settings.LaunchAtStartup = StartupToggle.IsChecked == true;
         settings.SelectedMicrophone = MicrophoneCombo.SelectedItem?.ToString() ?? "";
+        settings.SilenceThreshold = (int)ThresholdSlider.Value;
+        settings.NormalizeAudio = NormalizeToggle.IsChecked == true;
 
         var selectedModel = GetSelectedModel();
         if (selectedModel is not null)
@@ -290,7 +291,119 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
         AutoSave();
     }
 
+    private void PopulateMicrophoneCombo(string selectedMicrophone)
+    {
+        MicrophoneCombo.Items.Clear();
+        var devices = AudioCaptureService.GetAvailableDevices();
+        int micIndex = 0;
+        for (int i = 0; i < devices.Count; i++)
+        {
+            MicrophoneCombo.Items.Add(devices[i]);
+            if (devices[i] == selectedMicrophone)
+                micIndex = i;
+        }
+
+        if (MicrophoneCombo.Items.Count > 0)
+            MicrophoneCombo.SelectedIndex = micIndex;
+    }
+
+    private void RefreshMicrophones_Click(object sender, RoutedEventArgs e)
+    {
+        var current = MicrophoneCombo.SelectedItem?.ToString() ?? "";
+        _isLoading = true;
+        PopulateMicrophoneCombo(current);
+        _isLoading = false;
+        AutoSave();
+    }
+
     private void MicrophoneCombo_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        AutoSave();
+    }
+
+    private void TestMic_Click(object sender, RoutedEventArgs e)
+    {
+        if (_previewService is { IsPreviewing: true })
+        {
+            StopMicPreview();
+            return;
+        }
+
+        var devices = AudioCaptureService.GetAvailableDevices();
+        int deviceNumber = 0;
+        var selected = MicrophoneCombo.SelectedItem?.ToString() ?? "";
+        for (int i = 0; i < devices.Count; i++)
+        {
+            if (devices[i] == selected)
+            {
+                deviceNumber = i;
+                break;
+            }
+        }
+
+        _previewService = new AudioCaptureService();
+        _previewService.StartPreview(deviceNumber);
+        _smoothedRms = 0;
+
+        _levelTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+        _levelTimer.Tick += LevelTimer_Tick;
+        _levelTimer.Start();
+
+        TestMicButton.Content = "Stop";
+    }
+
+    private void StopMicPreview()
+    {
+        _levelTimer?.Stop();
+        _levelTimer = null;
+        _previewService?.StopPreview();
+        _previewService?.Dispose();
+        _previewService = null;
+        _smoothedRms = 0;
+        MicLevelBar.Value = 0;
+        RmsValueText.Text = "RMS: \u2014";
+        TestMicButton.Content = "Test Mic";
+    }
+
+    private void LevelTimer_Tick(object? sender, EventArgs e)
+    {
+        if (_previewService is null) return;
+
+        double raw = _previewService.LatestRms;
+        _smoothedRms = _smoothedRms * 0.7 + raw * 0.3;
+        MicLevelBar.Value = _smoothedRms;
+        RmsValueText.Text = $"RMS: {_smoothedRms:F0}";
+        UpdateThresholdMarker();
+    }
+
+    private void UpdateThresholdMarker()
+    {
+        double max = ThresholdSlider.Maximum;
+        if (max <= 0) return;
+        double ratio = ThresholdSlider.Value / max;
+        double availableWidth = MicLevelBar.ActualWidth;
+        if (availableWidth <= 0) return;
+        Canvas.SetLeft(ThresholdMarker, ratio * availableWidth);
+    }
+
+    private void MicLevelBar_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        UpdateThresholdMarker();
+    }
+
+    private void ThresholdSlider_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    {
+        e.Handled = true; // prevent scroll from changing slider value
+    }
+
+    private void ThresholdSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        ThresholdValueText.Text = $"Threshold: {(int)ThresholdSlider.Value}";
+        UpdateThresholdMarker();
+        AutoSave();
+    }
+
+    private void NormalizeToggle_Changed(object sender, RoutedEventArgs e)
     {
         AutoSave();
     }
@@ -298,11 +411,13 @@ public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
     private void Close_Click(object sender, RoutedEventArgs e)
     {
         StopHotkeyCapture();
+        StopMicPreview();
         Close();
     }
 
     protected override void OnClosed(EventArgs e)
     {
+        StopMicPreview();
         if (_isCapturingHotkey)
             StopHotkeyCapture();
         _downloadCts?.Cancel();

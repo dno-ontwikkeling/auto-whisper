@@ -14,6 +14,8 @@ public class AppSettings
     public string Language { get; set; } = "auto";
     public bool LaunchAtStartup { get; set; } = false;
     public string SelectedMicrophone { get; set; } = "";
+    public int SilenceThreshold { get; set; } = 200;
+    public bool NormalizeAudio { get; set; } = true;
 }
 
 public class SettingsService

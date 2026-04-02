@@ -77,7 +77,8 @@ public class DictationStateMachine
         _tickTimer = null;
         _recordingTimer.Stop();
 
-        var audioStream = _audioCaptureService.StopRecording();
+        var settings = _settingsService.Settings;
+        var audioStream = _audioCaptureService.StopRecording(settings.SilenceThreshold, settings.NormalizeAudio);
 
         if (_recordingTimer.ElapsedMilliseconds < MinRecordingMs || audioStream is null)
         {

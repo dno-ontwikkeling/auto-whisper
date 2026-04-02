@@ -3,7 +3,7 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
                  Title="AutoWhisper Settings"
-                 Width="840" Height="580"
+                 Width="840" Height="640"
                  WindowStartupLocation="CenterScreen"
                  ResizeMode="NoResize"
                  ExtendsContentIntoTitleBar="True">
@@ -127,13 +127,75 @@
                     <DockPanel>
                         <TextBlock Text="Microphone" FontWeight="SemiBold"
                                    DockPanel.Dock="Left" VerticalAlignment="Center" />
-                        <ComboBox x:Name="MicrophoneCombo"
-                                  Width="220"
-                                  HorizontalAlignment="Right"
-                                  SelectionChanged="MicrophoneCombo_Changed" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <ComboBox x:Name="MicrophoneCombo"
+                                      Width="220"
+                                      SelectionChanged="MicrophoneCombo_Changed" />
+                            <ui:Button x:Name="RefreshMicButton"
+                                       Click="RefreshMicrophones_Click"
+                                       Appearance="Secondary"
+                                       Margin="8,0,0,0"
+                                       ToolTip="Refresh microphone list">
+                                <ui:SymbolIcon Symbol="ArrowSync24" />
+                            </ui:Button>
+                        </StackPanel>
                     </DockPanel>
                 </Border>
 
+                <Border Background="#10FFFFFF" CornerRadius="8" Padding="16" Margin="0,0,0,8">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,8">
+                            <StackPanel DockPanel.Dock="Left">
+                                <TextBlock Text="Silence threshold" FontWeight="SemiBold" />
+                                <TextBlock Text="Speak and drag the marker below your voice level" Opacity="0.6" FontSize="12" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <TextBlock x:Name="RmsValueText" Text="RMS: —" Opacity="0.6" FontSize="12"
+                                           VerticalAlignment="Center" Margin="0,0,12,0" />
+                                <ui:Button x:Name="TestMicButton"
+                                           Content="Test Mic"
+                                           Click="TestMic_Click"
+                                           Appearance="Secondary" />
+                            </StackPanel>
+                        </DockPanel>
+
+                        <!-- Level meter with threshold overlay -->
+                        <Grid Height="24" Margin="0,0,0,8">
+                            <ProgressBar x:Name="MicLevelBar"
+                                         Minimum="0" Maximum="3000"
+                                         Value="0"
+                                         VerticalAlignment="Stretch"
+                                         SizeChanged="MicLevelBar_SizeChanged" />
+                            <Canvas ClipToBounds="True">
+                                <Border x:Name="ThresholdMarker"
+                                        Width="3" Background="White" Opacity="0.9"
+                                        Canvas.Top="0"
+                                        Height="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Canvas}}"
+                                        IsHitTestVisible="False" />
+                            </Canvas>
+                            <Slider x:Name="ThresholdSlider"
+                                    Minimum="0" Maximum="3000"
+                                    VerticalAlignment="Stretch"
+                                    Opacity="0"
+                                    IsMoveToPointEnabled="True"
+                                    Focusable="False"
+                                    PreviewMouseWheel="ThresholdSlider_PreviewMouseWheel"
+                                    ValueChanged="ThresholdSlider_ValueChanged" />
+                        </Grid>
+
+                        <DockPanel>
+                            <CheckBox x:Name="NormalizeToggle"
+                                      DockPanel.Dock="Right"
+                                      Content="Normalize audio"
+                                      VerticalAlignment="Center"
+                                      HorizontalAlignment="Right"
+                                      Checked="NormalizeToggle_Changed"
+                                      Unchecked="NormalizeToggle_Changed" />
+                            <TextBlock x:Name="ThresholdValueText" Text="Threshold: 200"
+                                       Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
 
             </StackPanel>
         </ScrollViewer>

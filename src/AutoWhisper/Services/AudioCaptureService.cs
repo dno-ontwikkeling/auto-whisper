@@ -12,7 +12,13 @@ public class AudioCaptureService : IDisposable
     private long _totalBytesRecorded;
     private Exception? _recordingError;
 
+    // Preview mode — lightweight mic test without buffering audio
+    private WaveInEvent? _previewWaveIn;
+    private volatile float _latestRms;
+
     public bool IsRecording { get; private set; }
+    public bool IsPreviewing { get; private set; }
+    public float LatestRms => _latestRms;
 
     public void StartRecording(int deviceNumber = 0)
     {
@@ -59,7 +65,7 @@ public class AudioCaptureService : IDisposable
         }
     }
 
-    public MemoryStream? StopRecording()
+    public MemoryStream? StopRecording(int silenceThreshold = 200, bool normalize = false)
     {
         lock (_lock)
         {
@@ -83,15 +89,17 @@ public class AudioCaptureService : IDisposable
             {
                 Logger.Log("Discarding audio buffer due to recording error.");
                 _audioBuffer?.Dispose();
-                var result = _audioBuffer;
                 _audioBuffer = null;
                 return null;
             }
 
             if (_audioBuffer is { Length: > 44 }) // >44 means more than just a WAV header
             {
+                // Find the actual start of PCM data by locating the "data" chunk
+                int dataOffset = FindDataChunkOffset(_audioBuffer);
+
                 // Calculate RMS using streaming approach — no large allocation
-                _audioBuffer.Position = 44; // skip WAV header
+                _audioBuffer.Position = dataOffset;
                 double sumSquares = 0;
                 long sampleCount = 0;
                 var chunk = new byte[4096];
@@ -106,15 +114,19 @@ public class AudioCaptureService : IDisposable
                     }
                 }
                 double rms = sampleCount > 0 ? Math.Sqrt(sumSquares / sampleCount) : 0;
-                Logger.Log($"Audio RMS level: {rms:F0} (silence < 100, speech typically > 500)");
+                Logger.Log($"Audio RMS level: {rms:F0} (threshold={silenceThreshold}, speech typically > 500)");
 
-                if (rms < 100)
+                if (rms < silenceThreshold)
                 {
                     Logger.Log("Audio below silence threshold, discarding.");
                     _audioBuffer.Dispose();
                     _audioBuffer = null;
                     return null;
                 }
+
+                // Normalize audio to consistent level for Whisper (~-14 dBFS, linear 0.20)
+                if (normalize)
+                    NormalizeAudio(rms, dataOffset);
 
                 _audioBuffer.Position = 0;
                 var buffer = _audioBuffer;
@@ -127,6 +139,110 @@ public class AudioCaptureService : IDisposable
             _audioBuffer = null;
             return null;
         }
+    }
+
+    private void NormalizeAudio(double currentRms, int dataOffset)
+    {
+        const double targetRms = 0.20 * 32768; // ~-14 dBFS
+        const double maxGain = 6.0;
+
+        if (currentRms < 1.0) return; // near-silence, don't amplify
+
+        double gain = Math.Min(targetRms / currentRms, maxGain);
+        if (Math.Abs(gain - 1.0) < 0.05) return; // close enough, skip
+
+        Logger.Log($"Normalizing audio: gain={gain:F2}x (current RMS={currentRms:F0}, target={targetRms:F0})");
+
+        // Rebuild the stream with normalized samples to ensure WAV integrity
+        var src = _audioBuffer!;
+        var dest = new MemoryStream((int)src.Length);
+
+        // Copy WAV header as-is
+        src.Position = 0;
+        var header = new byte[dataOffset];
+        src.Read(header, 0, dataOffset);
+        dest.Write(header, 0, dataOffset);
+
+        // Normalize PCM samples
+        var chunk = new byte[4096];
+        int bytesRead;
+        while ((bytesRead = src.Read(chunk, 0, chunk.Length)) > 0)
+        {
+            for (int i = 0; i < bytesRead - 1; i += 2)
+            {
+                short sample = (short)(chunk[i] | (chunk[i + 1] << 8));
+                int scaled = Math.Clamp((int)(sample * gain), short.MinValue, short.MaxValue);
+                chunk[i] = (byte)(scaled & 0xFF);
+                chunk[i + 1] = (byte)((scaled >> 8) & 0xFF);
+            }
+            dest.Write(chunk, 0, bytesRead);
+        }
+
+        src.Dispose();
+        _audioBuffer = dest;
+    }
+
+    /// <summary>
+    /// Parses the WAV header to find the byte offset where the "data" chunk begins.
+    /// </summary>
+    private static int FindDataChunkOffset(MemoryStream stream)
+    {
+        stream.Position = 12; // skip RIFF header (4) + size (4) + WAVE (4)
+        var buf = new byte[8];
+        while (stream.Position + 8 <= stream.Length)
+        {
+            stream.Read(buf, 0, 8);
+            int chunkSize = buf[4] | (buf[5] << 8) | (buf[6] << 16) | (buf[7] << 24);
+
+            if (buf[0] == 'd' && buf[1] == 'a' && buf[2] == 't' && buf[3] == 'a')
+                return (int)stream.Position;
+
+            stream.Position += chunkSize;
+        }
+
+        // Fallback if "data" chunk not found
+        Logger.Log("WAV 'data' chunk not found, falling back to offset 44");
+        return 44;
+    }
+
+    public void StartPreview(int deviceNumber = 0)
+    {
+        if (IsPreviewing) return;
+
+        _latestRms = 0;
+        _previewWaveIn = new WaveInEvent
+        {
+            DeviceNumber = deviceNumber,
+            WaveFormat = new WaveFormat(rate: 16000, bits: 16, channels: 1),
+            BufferMilliseconds = 50
+        };
+        _previewWaveIn.DataAvailable += OnPreviewDataAvailable;
+        _previewWaveIn.StartRecording();
+        IsPreviewing = true;
+    }
+
+    public void StopPreview()
+    {
+        if (!IsPreviewing) return;
+
+        _previewWaveIn?.StopRecording();
+        _previewWaveIn?.Dispose();
+        _previewWaveIn = null;
+        IsPreviewing = false;
+        _latestRms = 0;
+    }
+
+    private void OnPreviewDataAvailable(object? sender, WaveInEventArgs e)
+    {
+        double sumSquares = 0;
+        int sampleCount = e.BytesRecorded / 2;
+        for (int i = 0; i < e.BytesRecorded - 1; i += 2)
+        {
+            short sample = (short)(e.Buffer[i] | (e.Buffer[i + 1] << 8));
+            sumSquares += sample * (double)sample;
+        }
+        float rms = sampleCount > 0 ? (float)Math.Sqrt(sumSquares / sampleCount) : 0f;
+        _latestRms = rms;
     }
 
     public static List<string> GetAvailableDevices()
@@ -142,6 +258,7 @@ public class AudioCaptureService : IDisposable
 
     public void Dispose()
     {
+        StopPreview();
         lock (_lock)
         {
             _writer?.Dispose();
