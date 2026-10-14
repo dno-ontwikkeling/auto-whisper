@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plan: Claude CLI Post-Processing</title>
+<style>
+  :root { --bg:#fafaf9; --fg:#1c1917; --muted:#78716c; --card:#fff; --line:#e7e5e4; --ok:#15803d; --todo:#a8a29e; --accent:#2563eb; --note:#fef9c3; --notefg:#713f12; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#161513; --fg:#e7e5e4; --muted:#a8a29e; --card:#1f1d1b; --line:#33302d; --ok:#4ade80; --todo:#78716c; --accent:#60a5fa; --note:#2a2412; --notefg:#fde68a; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.55 system-ui, sans-serif; }
+  main { max-width:820px; margin:0 auto; padding:32px 16px 80px; }
+  .banner { font-size:12px; color:var(--muted); border:1px dashed var(--line); padding:6px 10px; border-radius:6px; margin-bottom:24px; overflow-wrap:anywhere; }
+  h1 { margin:0 0 8px; font-size:28px; line-height:1.2; }
+  h2 { margin:40px 0 12px; font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+  h3 { margin:24px 0 8px; font-size:15px; }
+  nav { display:flex; gap:14px; flex-wrap:wrap; font-size:13px; margin:10px 0 0; }
+  nav a { color:var(--accent); text-decoration:none; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-top:20px; }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px 14px; }
+  .stat b { font-size:22px; } .stat span { color:var(--muted); font-size:13px; }
+  .bar { height:6px; background:var(--line); border-radius:99px; overflow:hidden; margin-top:8px; }
+  .bar > i { display:block; height:100%; background:var(--ok); }
+  p { margin:8px 0; } ul { margin:6px 0; padding-left:22px; } li { margin:3px 0; }
+  pre { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:8px 10px; overflow-x:auto; font:13px ui-monospace, Consolas, monospace; }
+  code { font:13px ui-monospace, Consolas, monospace; background:var(--card); border:1px solid var(--line); padding:0 5px; border-radius:4px; overflow-wrap:anywhere; }
+  details { background:var(--card); border:1px solid var(--line); border-radius:8px; margin-bottom:8px; }
+  details > summary { cursor:pointer; padding:10px 14px; list-style:none; display:flex; gap:10px; align-items:baseline; }
+  details > summary::-webkit-details-marker { display:none; }
+  .ctx > summary { color:var(--muted); font-size:14px; }
+  .inner, .ctxbody { padding:0 14px 12px 38px; font-size:15px; }
+  .ctxbody { padding-left:14px; }
+  .dot { flex:none; width:14px; height:14px; border-radius:50%; border:2px solid var(--todo); position:relative; top:2px; }
+  .done > summary .dot, li.done > .dot { background:var(--ok); border-color:var(--ok); }
+  .next > summary .dot { border-color:var(--accent); }
+  .n { font-weight:600; white-space:nowrap; }
+  .st { flex:1; }
+  .tag { font-size:11px; padding:1px 8px; border-radius:99px; border:1px solid var(--line); color:var(--muted); white-space:nowrap; }
+  .done .tag { color:var(--ok); border-color:var(--ok); } .next .tag { color:var(--accent); border-color:var(--accent); }
+  ul.crit { list-style:none; padding:0; }
+  li.row { display:flex; gap:10px; padding:6px 0; }
+  li.row > .dot { top:5px; } li.row .t { flex:1; min-width:0; } li.row.done .t > :first-child { color:var(--muted); }
+  dl { margin:10px 0 0; } dt { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+  dd { margin:2px 0 0; } .chips { display:flex; flex-wrap:wrap; gap:4px; }
+  .note { margin-top:10px; background:var(--note); color:var(--notefg); font-size:13px; padding:8px 10px; border-radius:6px; }
+  .note b { text-transform:uppercase; font-size:11px; letter-spacing:.06em; margin-right:6px; }
+  details.log { margin-top:12px; background:transparent; border:0; }
+  details.log > summary { padding:4px 0; font-size:12px; color:var(--muted); }
+  .lg { font-size:13px; color:var(--muted); margin:3px 0; overflow-wrap:anywhere; }
+  .lg b { color:var(--fg); }
+</style>
+</head>
+<body>
+<main>
+  <div class="banner">Generated from <code>plans/claude-cli-postprocessing.md</code> at 2026-10-04 21:48. Read-only view: edit the .md, this page refreshes on save.</div>
+  <h1>Claude CLI Post-Processing</h1>
+  <nav><a href="#goal">Goal</a><a href="#success-criteria">Success criteria</a><a href="#out-of-scope">Out of scope</a><a href="#steps">Steps</a><a href="#risks">Risks</a><a href="#open-questions">Open questions</a></nav>
+  <div class="stats"><div class="stat"><b>0/13</b> <span>steps done</span><div class="bar"><i style="width:0%"></i></div></div><div class="stat"><b>0/10</b> <span>success criteria met</span><div class="bar"><i style="width:0%"></i></div></div></div>
+  <h2 id="goal">Goal</h2><p>Add a second global hotkey, "dictate + Claude". It records and transcribes as today, then pipes the transcript through the local <code>claude -p</code> CLI with a user-selected preset prompt (structured summary, cleanup, custom) and pastes the result at the cursor. The normal hotkey is unchanged. On any Claude failure the raw transcript is pasted and an error is shown, so dictation is never lost. Uses the user's existing Claude CLI login; no API key is stored.</p><h2 id="success-criteria">Success criteria</h2><ul class="crit"><li class="row "><span class="dot"></span><div class="t">Claude hotkey records, transcribes, runs the active preset and pastes the result at the cursor.</div></li><li class="row "><span class="dot"></span><div class="t">Normal hotkey behavior and latency unchanged; main and Claude hotkeys never both fire (modifier-subset overlap handled).</div></li><li class="row "><span class="dot"></span><div class="t">Overlay shows a distinct Processing state during the Claude call.</div></li><li class="row "><span class="dot"></span><div class="t"><code>claude</code> missing from PATH: settings shows "not found"; Claude hotkey pastes raw transcript and shows an error.</div></li><li class="row "><span class="dot"></span><div class="t">Timeout (30s), non-zero exit or empty output: raw transcript pasted, error shown, process killed on timeout.</div></li><li class="row "><span class="dot"></span><div class="t">CLI run uses no tools and no session persistence; transcript is passed on stdin, never interpolated into a shell command line.</div></li><li class="row "><span class="dot"></span><div class="t">Foreground window changed during the wait: result goes to clipboard only, no paste.</div></li><li class="row "><span class="dot"></span><div class="t">Presets (name + prompt) editable in settings, persisted in <code>settings.json</code>; defaults "Structured summary" and "Clean up" shipped.</div></li><li class="row "><span class="dot"></span><div class="t">Settings section follows <code>DESIGN.md</code> and states that dictated text is sent to Anthropic.</div></li><li class="row "><span class="dot"></span><div class="t">Unit tests cover settings round-trip, hotkey resolution, and <code>ClaudeCliService</code> (args, timeout, exit codes, empty output, missing CLI) with a faked process runner.</div></li></ul><h2 id="out-of-scope">Out of scope</h2><ul><li>Anthropic API key mode, streaming output, tool use / agent behavior</li><li>Chaining presets, per-preset hotkeys, preview/confirm window, runtime preset picker</li><li>Model selection setting (CLI default is used)</li></ul><h2 id="steps">Steps</h2><details class="step next" id="step-1" open>
+  <summary><span class="dot"></span><span class="n">Step 1</span><span class="st">Create xUnit test project referencing the app, add to solution, add one passing sanity…</span><span class="tag">next</span></summary>
+  <div class="inner">
+    <p>Create xUnit test project referencing the app, add to solution, add one passing sanity test for <code>TextCorrectionService.Apply</code></p>
+    <dl><dt>Files</dt><dd class="chips"><code>tests/AutoWhisper.Tests/AutoWhisper.Tests.csproj</code><code>tests/AutoWhisper.Tests/TextCorrectionServiceTests.cs</code><code>AutoWhisper.sln</code></dd></dl>
+    <dl><dt>Verify</dt><dd><code>dotnet test tests/AutoWhisper.Tests</code></dd></dl>
+    
+    
+  </div>
+</details>
+<details class="step todo" id="step-2">
+  <summary><span class="dot"></span><span class="n">Step 2</span><span class="st">Spike the CLI contract on this machine and record exact working flags (stdin input,…</span><span class="tag">todo</span></summary>
+  <div class="inner">
+    <p>Spike the CLI contract on this machine and record exact working flags (stdin input, <code>--tools ""</code>, <code>--no-session-persistence</code>, <code>--system-prompt</code>, exit codes, executable name <code>claude.exe</code> vs <code>claude.cmd</code>) in the Log</p>
+    <dl><dt>Files</dt><dd class="chips"><code>plans/claude-cli-postprocessing.md</code></dd></dl>
+    <dl><dt>Verify</dt><dd><code>echo "hello world" | claude -p --no-session-persistence --tools "" --system-prompt "Reply with the input in uppercase only"</code> prints <code>HELLO WORLD</code></dd></dl>
+    
+    
+  </div>
+</details>
+<details class="step todo" id="step-3">
+  <summary><span class="dot"></span><span class="n">Step 3</span><span class="st">Write failing settings tests</span><span class="tag">todo</span></summary>
+  <div class="inner">
+    <p>Write failing settings tests: <code>ClaudePresets</code> defaults contain "Structured summary" and "Clean up", <code>ActiveClaudePreset</code> defaults to first, Claude hotkey defaults differ from main hotkey, JSON round-trip keeps presets and hotkey</p>
+    <dl><dt>Files</dt><dd class="chips"><code>tests/AutoWhisper.Tests/ClaudeSettingsTests.cs</code></dd></dl>
+    <dl><dt>Verify</dt><dd><code>dotnet test tests/AutoWhisper.Tests</code> fails (RED) on missing members</dd></dl>
+    
+    
+  </div>
+</details>
+<details class="step todo" id="step-4">
+  <summary><span class="dot"></span><span class="n">Step 4</span><span class="st">Add <code>ClaudePreset</code> and new <code>AppSettings</code> members (<code>ClaudeHotkeyKey</code>,…</span><span class="tag">todo</span></summary>
+  <div class="inner">
+    <p>Add <code>ClaudePreset</code> and new <code>AppSettings</code> members (<code>ClaudeHotkeyKey</code>, <code>ClaudeHotkeyModifiers</code>, <code>ClaudePresets</code>, <code>ActiveClaudePreset</code>)</p>
+    <dl><dt>Files</dt><dd class="chips"><code>src/AutoWhisper/Services/SettingsService.cs</code></dd></dl>
+    <dl><dt>Verify</dt><dd><code>dotnet test tests/AutoWhisper.Tests</code></dd></dl>
+    
+    
+  </div>
+</details>
+<details class="step todo" id="step-5">
+  <summary><span class="dot"></span><span class="n">Step 5</span><span class="st">Write failing <code>ClaudeCliService</code> tests with a fake <code>IProcessRunner</code></span><span class="tag">todo</span></summary>
+  <div class="inner">
+    <p>Write failing <code>ClaudeCliService</code> tests with a fake <code>IProcessRunner</code>: builds args per Step 2 findings with transcript on stdin; success returns trimmed stdout; non-zero exit, empty output, timeout and CLI-not-found each return a failure result carrying the error message</p>
+    <dl><dt>Files</dt><dd class="chips"><code>tests/AutoWhisper.Tests/ClaudeCliServiceTests.cs</code></dd></dl>
+    <dl><dt>Verify</dt><dd><code>dotnet test tests/AutoWhisper.Tests</code> fails (RED)</dd></dl>
+    
+    
+  </div>
+</details>
+<details class="step todo" id="step-6">
+  <summary><span class="dot"></span><span class="n">Step 6</span><span class="st">Implement <code>IProcessRunner</code> + real runner (argument list, redirected stdin/stdout, timeout…</span><span class="tag">todo</span></summary>
+  <div class="inner">
+    <p>Implement <code>IProcessRunner</code> + real runner (argument list, redirected stdin/stdout, timeout with kill of process tree, no window), <code>ClaudeCliLocator</code> (PATH lookup), and <code>ClaudeCliService.ProcessAsync(text, preset)</code> returning a result with <code>Text</code>/<code>Error</code></p>
+    <dl><dt>Files</dt><dd class="chips"><code>src/AutoWhisper/Services/ClaudeCliService.cs</code><code>src/AutoWhisper/Services/ProcessRunner.cs</code></dd></dl>
+    <dl><dt>Verify</dt><dd><code>dotnet test tests/AutoWhisper.Tests</code></dd></dl>
+    
+    
+  </div>
+</details>
+<details class="step todo" id="step-7">
+  <summary><span class="dot"></span><span class="n">Step 7</span><span class="st">Write failing <code>HotkeyMatcher.Resolve(mask, key, bindings)</code> tests</span><span class="tag">todo</span></summary>
+  <div class="inner">
+    <p>Write failing <code>HotkeyMatcher.Resolve(mask, key, bindings)</code> tests: exact match wins, Ctrl+Shift+Alt+Space picks Claude not main, Ctrl+Shift+Space picks main, unmatched key returns none, bindings with the same combo flagged as conflict</p>
+    <dl><dt>Files</dt><dd class="chips"><code>tests/AutoWhisper.Tests/HotkeyMatcherTests.cs</code></dd></dl>
+    <dl><dt>Verify</dt><dd><code>dotnet test tests/AutoWhisper.Tests</code> fails (RED)</dd></dl>
+    
+    
+  </div>
+</details>
+<details class="step todo" id="step-8">
+  <summary><span class="dot"></span><span class="n">Step 8</span><span class="st">Implement <code>HotkeyMatcher</code> (most-specific-modifiers wins) and extend <code>HotkeyService</code> with…</span><span class="tag">todo</span></summary>
+  <div class="inner">
+    <p>Implement <code>HotkeyMatcher</code> (most-specific-modifiers wins) and extend <code>HotkeyService</code> with <code>ClaudeHotkeyDown</code>/<code>ClaudeHotkeyUp</code> using it, tracking which binding is held so key-up fires for the right one</p>
+    <dl><dt>Files</dt><dd class="chips"><code>src/AutoWhisper/Services/HotkeyMatcher.cs</code><code>src/AutoWhisper/Services/HotkeyService.cs</code></dd></dl>
+    <dl><dt>Verify</dt><dd><code>dotnet test tests/AutoWhisper.Tests</code> and <code>dotnet build AutoWhisper.sln</code></dd></dl>
+    
+    
+  </div>
+</details>
+<details class="step todo" id="step-9">
+  <summary><span class="dot"></span><span class="n">Step 9</span><span class="st">Add <code>TextInjectionService.CopyToClipboardAsync</code> and a <code>ForegroundWindow</code> helper (Win32…</span><span class="tag">todo</span></summary>
+  <div class="inner">
+    <p>Add <code>TextInjectionService.CopyToClipboardAsync</code> and a <code>ForegroundWindow</code> helper (Win32 <code>GetForegroundWindow</code>)</p>
+    <dl><dt>Files</dt><dd class="chips"><code>src/AutoWhisper/Services/TextInjectionService.cs</code><code>src/AutoWhisper/Services/ForegroundWindow.cs</code></dd></dl>
+    <dl><dt>Verify</dt><dd><code>dotnet build AutoWhisper.sln</code></dd></dl>
+    
+    
+  </div>
+</details>
+<details class="step todo" id="step-10">
+  <summary><span class="dot"></span><span class="n">Step 10</span><span class="st">Extend <code>DictationStateMachine</code></span><span class="tag">todo</span></summary>
+  <div class="inner">
+    <p>Extend <code>DictationStateMachine</code>: <code>Processing</code> state, record mode on hotkey down, after corrections run the Claude step in Claude mode, capture foreground window before the call, fallback to raw transcript on failure with <code>Error</code> event, clipboard-only if window changed</p>
+    <dl><dt>Files</dt><dd class="chips"><code>src/AutoWhisper/State/DictationStateMachine.cs</code></dd></dl>
+    <dl><dt>Verify</dt><dd><code>dotnet build AutoWhisper.sln</code></dd></dl>
+    
+    
+  </div>
+</details>
+<details class="step todo" id="step-11">
+  <summary><span class="dot"></span><span class="n">Step 11</span><span class="st">Overlay Processing state (replace timer with "Claude" label, keep bars) and wire it in…</span><span class="tag">todo</span></summary>
+  <div class="inner">
+    <p>Overlay Processing state (replace timer with "Claude" label, keep bars) and wire it in <code>App</code> (<code>OnStateChanged</code>, construct <code>ClaudeCliService</code>, tray balloon on <code>Error</code>)</p>
+    <dl><dt>Files</dt><dd class="chips"><code>src/AutoWhisper/Views/RecordingOverlay.xaml</code><code>src/AutoWhisper/Views/RecordingOverlay.xaml.cs</code><code>src/AutoWhisper/App.xaml.cs</code></dd></dl>
+    <dl><dt>Verify</dt><dd><code>dotnet build AutoWhisper.sln</code></dd></dl>
+    
+    
+  </div>
+</details>
+<details class="step todo" id="step-12">
+  <summary><span class="dot"></span><span class="n">Step 12</span><span class="st">Settings UI section "Claude" per <code>DESIGN.md</code></span><span class="tag">todo</span></summary>
+  <div class="inner">
+    <p>Settings UI section "Claude" per <code>DESIGN.md</code>: CLI status, Claude hotkey capture (reject same combo as main), preset list editor (add/edit/delete, same pattern as word corrections), active preset dropdown, privacy note; autosave like other sections</p>
+    <dl><dt>Files</dt><dd class="chips"><code>src/AutoWhisper/Views/SettingsWindow.xaml</code><code>src/AutoWhisper/Views/SettingsWindow.xaml.cs</code></dd></dl>
+    <dl><dt>Verify</dt><dd><code>dotnet build AutoWhisper.sln</code></dd></dl>
+    
+    
+  </div>
+</details>
+<details class="step todo" id="step-13">
+  <summary><span class="dot"></span><span class="n">Step 13</span><span class="st">Document the feature (hotkey, presets, CLI requirement, privacy)</span><span class="tag">todo</span></summary>
+  <div class="inner">
+    
+    <dl><dt>Files</dt><dd class="chips"><code>README.md</code></dd></dl>
+    <dl><dt>Verify</dt><dd><code>grep -n "Claude" README.md</code></dd></dl>
+    
+    
+  </div>
+</details><h2 id="risks">Risks</h2><ul><li>Hotkey overlap: <code>HotkeyService.cs:98</code> matches modifiers as a subset, so Ctrl+Shift+Alt+Space also satisfies Ctrl+Shift+Space → most-specific-wins resolver (Steps 7-8) plus conflict rejection in settings (Step 12).</li><li>Windows spawn: <code>claude</code> may be <code>claude.cmd</code> needing a shell → Step 2 spike decides; never build a shell command string with transcript content, always stdin.</li><li>Prompt injection: dictated text may read like instructions → preset prompt passed as system prompt, tools disabled, output only pasted as text.</li><li>Latency 2-5s+ cold start → Processing overlay, 30s timeout, raw-transcript fallback.</li><li>Wrong paste target after wait → foreground window guard (Step 10), clipboard only.</li><li>Privacy: transcript leaves the machine → explicit note in settings and README.</li><li>Clipboard restore race in <code>TextInjectionService.cs:55-68</code> after paste → reuse existing flow, do not alter it.</li><li>No test project exists today → Step 1 introduces one; app project is <code>WinExe</code> net10.0-windows, so the test project must target the same.</li></ul><h2 id="open-questions">Open questions</h2><ul><li>Default Claude hotkey: assumed Ctrl+Shift+Alt+Space (works with the resolver). Change if it conflicts with the user's setup.</li><li>Model: assumed CLI default, no setting. A fast model (Haiku-class) may suit short dictation; revisit after the Step 2 spike shows latency.</li></ul>
+</main>
+</body>
+</html>
